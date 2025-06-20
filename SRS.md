@@ -42,7 +42,9 @@ The Reversible Image Alteration System is a distributed application that applies
     - Image upload endpoint
     - Processing status queries
     - Modification history retrieval
-    - Original and modified image serving
+    - Original image serving
+    - Modified image variant serving
+    - Image variant listing
 - Provide REST API endpoints for inter-service communication:
     - Notification of completed modifications
     - Modification instruction sharing with Verification Service
@@ -76,7 +78,7 @@ The Reversible Image Alteration System is a distributed application that applies
 
 #### 4.4 Web Interface
 
-- Provide file upload interface for image submission via Image Processing Service API
+- Provide file upload interface for image processing via Image Processing Service API
 - Display processing progress and status updates by polling Image Processing Service
 - Show verification results and modification statistics from Verification Service API
 - Enable viewing of original and modified image variants served by Image Processing Service
@@ -86,7 +88,7 @@ The Reversible Image Alteration System is a distributed application that applies
 
 #### 5.1 Performance
 
-- Process image uploads within 30 seconds for files up to 50MB
+- Process image within 30 seconds for files up to 50MB
 - Generate 100 variants within 5 minutes for standard resolution images
 - Verification service should process modifications within 10 seconds each
 
@@ -142,7 +144,9 @@ The Reversible Image Alteration System is a distributed application that applies
     - POST `/modify` for image uploads
     - GET `/processing/{id}/status` for processing status
     - GET `/modifications/{id}` for modification details
-    - GET `/images/{id}` for serving original and modified images
+    - GET `/images/{id}/original` for serving original images
+    - GET `/images/{id}/variants` for listing all image variants
+    - GET `/images/{id}/variants/{variant_id}` for serving specific modified variants
 - Image Processing Service internal API:
     - GET `/internal/modifications/{id}/instructions` to share modification data
 - Verification Service public API:
@@ -163,8 +167,8 @@ sequenceDiagram
     participant IPS as Image Processing Service
     participant VS as Verification Service
 
-    U->>F: Upload image file
-    F->>IPS: POST /upload (image file)
+    U->>F: Upload image file and process modifications
+    F->>IPS: POST /modify (image file)
     IPS->>IPS: Generate 100 variants
     IPS->>IPS: Store images & modifications
     IPS-->>F: 202 Accepted (processing_id)
@@ -228,7 +232,7 @@ sequenceDiagram
 
 #### 9.1 Image Storage
 
-- Support common image formats (JPEG, PNG, GIF, BMP)
+- Support common image formats (JPEG, PNG, BMP)
 - Maintain original image quality and metadata
 - Organize files in logical directory structure
 - Implement file naming conventions for traceability

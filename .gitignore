@@ -17,7 +17,7 @@ eggs/
 lib/
 lib64/
 parts/
-sheels/
+wheels/
 tsk/
 *.egg-info
 
@@ -26,3 +26,17 @@ tsk/
 
 # Logs
 logs/
+
+# Storage contents (keep folder structure, ignore contents)
+storage/images/**/*
+storage/databases/*
+storage/temp/*
+storage/logs/*
+!storage/images/.gitkeep
+!storage/images/*/.gitkeep
+!storage/databases/.gitkeep
+!storage/temp/.gitkeep
+!storage/logs/.gitkeep
+
+# Environment files
+.env
