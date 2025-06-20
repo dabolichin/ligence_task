@@ -1,0 +1,144 @@
+services:
+  image-processing-service:
+    build: .
+    container_name: image-processing-service
+    ports:
+      - "8001:8001"
+    volumes:
+      - image_storage:/app/storage/images
+      - database_storage:/app/storage/databases
+      - temp_storage:/app/storage/temp
+    environment:
+      - SERVICE_NAME=image-processing-service
+      - SERVICE_PORT=8001
+      - DATABASE_URL=sqlite:///app/storage/databases/image_processing.db
+      - IMAGE_STORAGE_PATH=/app/storage/images
+      - VERIFICATION_SERVICE_URL=http://verification-service:8002
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "src.image_processing_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8001",
+      ]
+    depends_on:
+      - verification-service
+
+  verification-service:
+    build: .
+    container_name: verification-service
+    ports:
+      - "8002:8002"
+    volumes:
+      - image_storage:/app/storage/images:ro # Read-only access
+      - database_storage:/app/storage/databases
+      - temp_storage:/app/storage/temp
+    environment:
+      - SERVICE_NAME=verification-service
+      - SERVICE_PORT=8002
+      - DATABASE_URL=sqlite:///app/storage/databases/verification.db
+      - IMAGE_PROCESSING_SERVICE_URL=http://image-processing-service:8001
+      - TEMP_STORAGE_PATH=/app/storage/temp
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "src.verification_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8002",
+      ]
+
+  # Web Interface
+  web-interface:
+    build: .
+    container_name: web-interface
+    ports:
+      - "8000:8000"
+    volumes:
+      - temp_storage:/app/storage/temp
+    environment:
+      - SERVICE_NAME=web-interface
+      - SERVICE_PORT=8000
+      - IMAGE_PROCESSING_SERVICE_URL=http://image-processing-service:8001
+      - VERIFICATION_SERVICE_URL=http://verification-service:8002
+      - TEMP_STORAGE_PATH=/app/storage/temp
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "src.web_interface.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+      ]
+    depends_on:
+      - image-processing-service
+      - verification-service
+
+volumes:
+  image_storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./storage/images
+
+  database_storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./storage/databases
+
+  temp_storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./storage/temp
+
+networks:
+  app-network:
+    driver: bridge

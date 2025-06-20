@@ -1,0 +1,122 @@
+services:
+  image-processing-service:
+    environment:
+      - LOG_LEVEL=DEBUG
+      - ENVIRONMENT=development
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "src.image_processing_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8001",
+        "--reload",
+        "--reload-dir",
+        "/app/src",
+      ]
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 10s
+    develop:
+      watch:
+        # Sync source code changes
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync
+          path: ./tests
+          target: /app/tests
+        # Rebuild on dependency changes
+        - action: rebuild
+          path: ./pyproject.toml
+        - action: rebuild
+          path: ./uv.lock
+
+  verification-service:
+    environment:
+      - LOG_LEVEL=DEBUG
+      - ENVIRONMENT=development
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "src.verification_service.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8002",
+        "--reload",
+        "--reload-dir",
+        "/app/src",
+      ]
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 10s
+    develop:
+      watch:
+        # Sync source code changes
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync
+          path: ./tests
+          target: /app/tests
+        # Rebuild on dependency changes
+        - action: rebuild
+          path: ./pyproject.toml
+        - action: rebuild
+          path: ./uv.lock
+
+  web-interface:
+    environment:
+      - LOG_LEVEL=DEBUG
+      - ENVIRONMENT=development
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "src.web_interface.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+        "--reload-dir",
+        "/app/src",
+      ]
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 10s
+    develop:
+      watch:
+        # Sync source code changes
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync
+          path: ./tests
+          target: /app/tests
+        # Sync static files for web interface
+        - action: sync
+          path: ./src/web_interface/static
+          target: /app/src/web_interface/static
+        # Sync templates
+        - action: sync
+          path: ./src/web_interface/templates
+          target: /app/src/web_interface/templates
+        # Rebuild on dependency changes
+        - action: rebuild
+          path: ./pyproject.toml
+        - action: rebuild
+          path: ./uv.lock

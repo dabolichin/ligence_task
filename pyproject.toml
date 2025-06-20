@@ -1,0 +1,69 @@
+[project]
+name = "reversible-image-modification-system"
+version = "0.1.0"
+description = "A distributed system for applying and verifying reversible image modifications"
+
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.16.0",
+
+    "pillow>=11.2.0",
+    "numpy>=2.3.0",
+
+    "pydantic>=2.11.0",
+
+    "httpx>=0.28.0",
+    "python-multipart>=0.0.20",
+    "jinja2>=3.1.0",
+
+    "python-dotenv>=1.1.0",
+    "loguru>=0.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-cov>=6.2.0",
+    "pytest-mock>=3.14.0",
+
+    # Development Tools
+    "watchfiles>=1.1.0",
+    "poethepoet>=0.35.0",
+]
+lint = [
+    "ruff>=0.12.0",
+    "mypy>=1.16.0",
+]
+
+[tool.uv]
+default-groups = "all"
+
+# Poe Tasks
+[tool.poe.tasks]
+# Linting and formatting tasks
+lint = "uv run ruff check"
+lint-fix = "uv run ruff check --fix"
+format = "uv run ruff format"
+format-check = "uv run ruff format --check"
+
+# Combined tasks
+check-all = ["lint", "format-check"]
+fix-all = ["lint-fix", "format"]
+
+# Docker tasks
+docker-build = "docker compose build"
+docker-up = "docker compose up -d"
+docker-up-dev = "docker compose -f docker-compose.yml -f docker-compose.dev.yml up"
+docker-watch = "docker compose watch"
+docker-down = "docker compose down"
+docker-logs = "docker compose logs -f"
+docker-restart = "docker compose restart"
+docker-clean = "docker compose down -v --remove-orphans"
+
+# Tool Configuration

@@ -1,0 +1,2 @@
+# This file ensures the temp storage directory is tracked by Git
+# Directory structure is maintained even when empty
