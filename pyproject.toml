@@ -68,4 +68,19 @@ docker-logs = "docker compose logs -f"
 docker-restart = "docker compose restart"
 docker-clean = "docker compose down -v --remove-orphans"
 
+# Test tasks
+test = "uv run pytest"
+test-verbose = "uv run pytest -v"
+
 # Tool Configuration
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--verbose",
+]
