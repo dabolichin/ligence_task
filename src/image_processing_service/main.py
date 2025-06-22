@@ -3,7 +3,7 @@ from pathlib import Path
 
 from app.api import internal, public
 from app.core.config import get_settings
-from app.db.database import create_tables
+from app.db.database import close_db, init_db
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -16,8 +16,8 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     logger.info("Starting Image Processing Service...")
 
-    await create_tables()
-    logger.info("Database tables created/verified")
+    await init_db()
+    logger.info("Database initialized")
 
     storage_dirs = [
         settings.absolute_original_images_dir,
@@ -31,7 +31,9 @@ async def lifespan(app: FastAPI):
     logger.info("Image Processing Service startup complete")
 
     yield
+
     logger.info("Shutting down Image Processing Service...")
+    await close_db()
 
 
 def create_app() -> FastAPI:

@@ -9,23 +9,17 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.34.0",
-
-    "sqlalchemy>=2.0.0",
-    "aiosqlite>=0.21.0",
     "greenlet>=3.0.0",
     "alembic>=1.16.0",
-
     "pillow>=11.2.0",
     "numpy>=2.3.0",
-
     "pydantic>=2.11.0",
     "pydantic-settings>=2.0.0",
-
     "httpx>=0.28.0",
     "python-multipart>=0.0.20",
     "jinja2>=3.1.0",
-
     "loguru>=0.7.0",
+    "tortoise-orm>=0.25.1",
 ]
 
 [dependency-groups]
@@ -33,10 +27,10 @@ dev = [
     "pytest>=8.4.0",
     "pytest-cov>=6.2.0",
     "pytest-mock>=3.14.0",
-
     # Development Tools
     "watchfiles>=1.1.0",
     "poethepoet>=0.35.0",
+    "pytest-asyncio>=1.0.0",
 ]
 lint = [
     "ruff>=0.12.0",
@@ -84,3 +78,5 @@ addopts = [
     "--strict-config",
     "--verbose",
 ]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
