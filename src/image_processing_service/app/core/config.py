@@ -39,9 +39,7 @@ class Settings(BaseSettings):
 
     # Image Processing Settings
     MAX_FILE_SIZE: int = Field(default=100 * 1024 * 1024)  # 100MB
-    ALLOWED_IMAGE_TYPES: List[str] = Field(
-        default=["image/jpeg", "image/png", "image/bmp"]
-    )
+    ALLOWED_IMAGE_FORMATS: List[str] = Field(default=["jpeg", "png", "bmp"])
     VARIANTS_COUNT: int = Field(default=100)
     MIN_MODIFICATIONS_PER_VARIANT: int = Field(default=100)
 

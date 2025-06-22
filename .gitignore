@@ -40,3 +40,6 @@ storage/logs/*
 
 # Environment files
 .env
+
+#Coverage
+.coverage
