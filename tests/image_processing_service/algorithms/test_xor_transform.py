@@ -202,7 +202,3 @@ class TestXORTransformAlgorithm:
         print(
             f"\nPerformance: Modification {modification_time:.3f}s, Reversal {reversal_time:.3f}s"
         )
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])

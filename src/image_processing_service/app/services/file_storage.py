@@ -66,6 +66,12 @@ class FileStorageService:
 
         return str(Path(self.settings.absolute_modified_images_dir) / variant_filename)
 
+    def extension_from_format(self, image_format: str) -> str:
+        if image_format == "JPEG":
+            return ".jpg"
+        else:
+            return f".{image_format.lower()}"
+
     async def save_original_image(
         self, file_data: bytes, filename: str, image_id: str
     ) -> Tuple[str, dict]:
@@ -76,11 +82,7 @@ class FileStorageService:
                 await f.write(file_data)
 
             metadata = await self._extract_metadata(temp_path)
-
-            if metadata["format"] == "JPEG":
-                extension = ".jpg"
-            else:
-                extension = f".{metadata['format'].lower()}"
+            extension = self.extension_from_format(metadata["format"])
 
             new_filename = f"{image_id}_original{extension}"
             storage_path = str(
