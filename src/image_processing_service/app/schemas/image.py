@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -80,3 +80,18 @@ class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
     details: Optional[str] = Field(None, description="Additional error details")
+
+
+class ModificationInstructions(BaseModel):
+    """Internal API response model for modification instructions"""
+
+    modification_id: UUID = Field(..., description="Modification identifier")
+    image_id: UUID = Field(..., description="Associated image identifier")
+    variant_number: int = Field(..., description="Variant number (1-100)")
+    algorithm_type: str = Field(..., description="Algorithm used for modification")
+    instructions: Dict[str, Any] = Field(
+        ..., description="Complete modification instructions"
+    )
+    storage_path: str = Field(..., description="Path to modified image file")
+    original_filename: str = Field(..., description="Original image filename")
+    created_at: datetime = Field(..., description="When modification was created")

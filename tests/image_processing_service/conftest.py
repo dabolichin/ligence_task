@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from tortoise import Tortoise
 
-from src.image_processing_service.app.api.public import router
+from src.image_processing_service.app.api.internal import router as internal_router
+from src.image_processing_service.app.api.public import router as public_router
 from src.image_processing_service.app.models import Image as ImageModel
 from src.image_processing_service.app.services.file_storage import FileStorageService
 from src.image_processing_service.app.services.processing_orchestrator import (
@@ -121,7 +122,8 @@ def sample_png_bytes():
 def test_client():
     """Create a test client for the FastAPI app"""
     app = FastAPI()
-    app.include_router(router, prefix="/api")
+    app.include_router(public_router, prefix="/api")
+    app.include_router(internal_router, prefix="/internal")
 
     @app.get("/api/health")
     async def health_check():
