@@ -1,6 +1,6 @@
 import random
 from dataclasses import asdict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from PIL import Image
 
@@ -110,3 +110,26 @@ class VariantGenerationService:
     async def get_variant_count(self, image_id: str) -> int:
         count = await Modification.filter(image_id=image_id).count()
         return count
+
+    async def get_modification_by_id(
+        self, modification_id: str
+    ) -> Optional[Modification]:
+        try:
+            modification = await Modification.get(id=modification_id)
+            return modification
+        except Exception:
+            return None
+
+    async def get_all_variants_for_image(self, image_id: str) -> List[Modification]:
+        modifications = await Modification.filter(image_id=image_id).order_by(
+            "variant_number"
+        )
+        return modifications
+
+    async def get_variant_by_number(
+        self, image_id: str, variant_number: int
+    ) -> Optional[Modification]:
+        modification = await Modification.filter(
+            image_id=image_id, variant_number=variant_number
+        ).first()
+        return modification
