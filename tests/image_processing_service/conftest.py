@@ -5,9 +5,12 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from PIL import Image
 from tortoise import Tortoise
 
+from src.image_processing_service.app.api.public import router
 from src.image_processing_service.app.models import Image as ImageModel
 from src.image_processing_service.app.services.file_storage import FileStorageService
 from src.image_processing_service.app.services.processing_orchestrator import (
@@ -102,6 +105,29 @@ def sample_image_bytes():
     img_bytes = io.BytesIO()
     image.save(img_bytes, format="JPEG")
     return img_bytes.getvalue()
+
+
+@pytest.fixture
+def sample_png_bytes():
+    """Create a sample PNG image for testing"""
+    img = Image.new("RGB", (200, 150), color="blue")
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format="PNG")
+    img_bytes.seek(0)
+    return img_bytes.getvalue()
+
+
+@pytest.fixture
+def test_client():
+    """Create a test client for the FastAPI app"""
+    app = FastAPI()
+    app.include_router(router, prefix="/api")
+
+    @app.get("/api/health")
+    async def health_check():
+        return {"status": "healthy", "service": "image-processing"}
+
+    return TestClient(app)
 
 
 @pytest.fixture

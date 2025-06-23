@@ -32,6 +32,7 @@ dev = [
     "watchfiles>=1.1.0",
     "poethepoet>=0.35.0",
     "pytest-asyncio>=1.0.0",
+    "httpx>=0.28.1",
 ]
 lint = [
     "ruff>=0.12.0",

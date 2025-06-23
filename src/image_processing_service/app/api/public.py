@@ -215,17 +215,17 @@ async def list_image_variants(image_id: UUID):
         if not modifications:
             raise HTTPException(status_code=404, detail=f"Image {image_id} not found")
 
-        variants = map(
-            lambda mod: VariantInfo(
+        variants = [
+            VariantInfo(
                 variant_id=UUID(str(mod.id)),
                 variant_number=mod.variant_number,
                 algorithm_type=mod.algorithm_type.value,
                 num_modifications=len(mod.instructions.get("modifications", [])),
                 storage_path=mod.storage_path,
                 created_at=mod.created_at,
-            ),
-            modifications,
-        )
+            )
+            for mod in modifications
+        ]
 
         return VariantListResponse(
             image_id=UUID(image_id),
