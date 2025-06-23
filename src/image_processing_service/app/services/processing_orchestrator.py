@@ -13,10 +13,14 @@ from .variant_generation import VariantGenerationService
 
 
 class ProcessingOrchestrator:
-    def __init__(self):
+    def __init__(
+        self,
+        file_storage: Optional[FileStorageService] = None,
+        variant_generator: Optional[VariantGenerationService] = None,
+    ):
         self.settings = get_settings()
-        self.file_storage = FileStorageService()
-        self.variant_generator = VariantGenerationService()
+        self.file_storage = file_storage or FileStorageService()
+        self.variant_generator = variant_generator or VariantGenerationService()
 
     async def start_image_processing(
         self, file_data: bytes, original_filename: str

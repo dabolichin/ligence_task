@@ -1,11 +1,13 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from tortoise.exceptions import DoesNotExist
 
+from ..core.dependencies import get_variant_generator
 from ..models import Modification
 from ..schemas.image import ModificationInstructions
+from ..services.variant_generation import VariantGenerationService
 
 router = APIRouter()
 
@@ -14,7 +16,10 @@ router = APIRouter()
     "/modifications/{modification_id}/instructions",
     response_model=ModificationInstructions,
 )
-async def get_modification_instructions(modification_id: UUID):
+async def get_modification_instructions(
+    modification_id: UUID,
+    variant_generator: VariantGenerationService = Depends(get_variant_generator),
+):
     """
     Get complete modification instructions for a specific variant.
     """

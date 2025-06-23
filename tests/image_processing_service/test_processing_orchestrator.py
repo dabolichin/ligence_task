@@ -20,20 +20,25 @@ def sample_image_data():
 class TestProcessingOrchestrator:
     @pytest.mark.asyncio
     async def test_start_image_processing_success(
-        self, orchestrator, sample_image_data, mock_image_record
+        self,
+        test_container,
+        mock_file_storage,
+        mock_variant_generator,
+        sample_image_data,
+        mock_image_record,
     ):
         filename = "test_image.jpg"
 
-        with (
-            patch.object(orchestrator.file_storage, "save_original_image") as mock_save,
-            patch.object(ImageModel, "create") as mock_create,
-            patch.object(orchestrator, "_generate_variants_background") as _,
-        ):
-            mock_save.return_value = (
-                "/fake/path/image.jpg",
-                {"file_size": 1024, "width": 100, "height": 100, "format": "JPEG"},
-            )
+        mock_file_storage.save_original_image.return_value = (
+            "/fake/path/image.jpg",
+            {"file_size": 1024, "width": 100, "height": 100, "format": "JPEG"},
+        )
 
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
+
+        with patch.object(ImageModel, "create") as mock_create:
             mock_create.return_value = mock_image_record
 
             image_id, processing_info = await orchestrator.start_image_processing(
@@ -48,62 +53,82 @@ class TestProcessingOrchestrator:
             assert processing_info["original_filename"] == filename
             assert processing_info["file_size"] == 1024
 
-            mock_save.assert_called_once_with(sample_image_data, filename, image_id)
+            mock_file_storage.save_original_image.assert_called_once_with(
+                sample_image_data, filename, image_id
+            )
             mock_create.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_start_image_processing_file_validation_error(
-        self, orchestrator, sample_image_data
+        self,
+        test_container,
+        mock_file_storage,
+        mock_variant_generator,
+        sample_image_data,
     ):
         invalid_data = b"not an image"
         filename = "invalid.txt"
 
-        with patch.object(
-            orchestrator.file_storage, "save_original_image"
-        ) as mock_save:
-            mock_save.side_effect = ValueError("Invalid image file")
+        mock_file_storage.save_original_image.side_effect = ValueError(
+            "Invalid image file"
+        )
 
-            with pytest.raises(ValueError, match="Invalid image file"):
-                await orchestrator.start_image_processing(invalid_data, filename)
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
+
+        with pytest.raises(ValueError, match="Invalid image file"):
+            await orchestrator.start_image_processing(invalid_data, filename)
 
     @pytest.mark.asyncio
     async def test_start_image_processing_io_error(
-        self, orchestrator, sample_image_data
+        self,
+        test_container,
+        mock_file_storage,
+        mock_variant_generator,
+        sample_image_data,
     ):
         filename = "test.jpg"
 
-        with (
-            patch.object(orchestrator.file_storage, "save_original_image") as mock_save,
-            patch.object(
-                orchestrator.file_storage, "delete_image_and_variants"
-            ) as mock_cleanup,
-        ):
-            mock_save.side_effect = IOError("Disk full")
+        mock_file_storage.save_original_image.side_effect = IOError("Disk full")
 
-            with pytest.raises(IOError, match="Disk full"):
-                await orchestrator.start_image_processing(sample_image_data, filename)
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
 
-            mock_cleanup.assert_called_once()
+        with pytest.raises(IOError, match="Disk full"):
+            await orchestrator.start_image_processing(sample_image_data, filename)
+
+        mock_file_storage.delete_image_and_variants.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_processing_completes_after_upload(
-        self, orchestrator, sample_image_data, mock_image_record
+        self,
+        test_container,
+        mock_file_storage,
+        mock_variant_generator,
+        sample_image_data,
+        mock_image_record,
     ):
         filename = "test_image.jpg"
 
+        mock_file_storage.save_original_image.return_value = (
+            "/fake/path/image.jpg",
+            {"file_size": 1024, "width": 100, "height": 100, "format": "JPEG"},
+        )
+        mock_file_storage.load_image.return_value = Image.new(
+            "RGB", (100, 100), color="red"
+        )
+
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
+
         with (
-            patch.object(orchestrator.file_storage, "save_original_image") as mock_save,
-            patch.object(orchestrator.file_storage, "load_image") as mock_load,
             patch.object(ImageModel, "create") as mock_create,
-            patch.object(orchestrator.variant_generator, "generate_variants") as _,
             patch.object(orchestrator, "_notify_verification_service") as _,
         ):
-            mock_save.return_value = (
-                "/fake/path/image.jpg",
-                {"file_size": 1024, "width": 100, "height": 100, "format": "JPEG"},
-            )
             mock_create.return_value = mock_image_record
-            mock_load.return_value = Image.new("RGB", (100, 100), color="red")
 
             image_id, processing_info = await orchestrator.start_image_processing(
                 sample_image_data, filename
@@ -119,12 +144,18 @@ class TestProcessingOrchestrator:
                 == "Image upload successful, processing started"
             )
 
-            mock_save.assert_called_once()
+            mock_file_storage.save_original_image.assert_called_once()
             mock_create.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_processing_status_in_progress(self, orchestrator):
+    async def test_get_processing_status_in_progress(
+        self, test_container, mock_file_storage, mock_variant_generator
+    ):
         image_id = str(uuid.uuid4())
+
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
 
         async def mock_get_func(id):
             mock_record = MagicMock()
@@ -153,8 +184,14 @@ class TestProcessingOrchestrator:
             assert status.total_variants == 100
 
     @pytest.mark.asyncio
-    async def test_get_processing_status_completed(self, orchestrator):
+    async def test_get_processing_status_completed(
+        self, test_container, mock_file_storage, mock_variant_generator
+    ):
         image_id = str(uuid.uuid4())
+
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
 
         async def mock_get_func(id):
             mock_record = MagicMock()
@@ -183,7 +220,13 @@ class TestProcessingOrchestrator:
             assert status.total_variants == 100
 
     @pytest.mark.asyncio
-    async def test_get_processing_status_not_found(self, orchestrator):
+    async def test_get_processing_status_not_found(
+        self, test_container, mock_file_storage, mock_variant_generator
+    ):
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
+
         with patch.object(ImageModel, "get") as mock_get:
             from tortoise.exceptions import DoesNotExist
 
@@ -193,47 +236,57 @@ class TestProcessingOrchestrator:
             assert status is None
 
     @pytest.mark.asyncio
-    async def test_upload_validation_and_io_errors(self, orchestrator):
-        # Test validation error
+    async def test_upload_validation_and_io_errors(
+        self, test_container, mock_file_storage, mock_variant_generator
+    ):
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
+
         invalid_data = b"not an image"
         filename = "invalid.jpg"
 
-        with patch.object(
-            orchestrator.file_storage, "save_original_image"
-        ) as mock_save:
-            mock_save.side_effect = ValueError("Invalid image format")
+        mock_file_storage.save_original_image.side_effect = ValueError(
+            "Invalid image format"
+        )
 
-            with pytest.raises(ValueError, match="Invalid image format"):
-                await orchestrator.start_image_processing(invalid_data, filename)
+        with pytest.raises(ValueError, match="Invalid image format"):
+            await orchestrator.start_image_processing(invalid_data, filename)
 
-        # Test IO error with cleanup
+        # Reset mock call count before testing IO error
+        mock_file_storage.delete_image_and_variants.reset_mock()
+
         valid_data = b"valid image data"
-        with (
-            patch.object(orchestrator.file_storage, "save_original_image") as mock_save,
-            patch.object(
-                orchestrator.file_storage, "delete_image_and_variants"
-            ) as mock_cleanup,
-        ):
-            mock_save.side_effect = IOError("Disk full")
+        mock_file_storage.save_original_image.side_effect = IOError("Disk full")
 
-            with pytest.raises(IOError, match="Disk full"):
-                await orchestrator.start_image_processing(valid_data, filename)
+        with pytest.raises(IOError, match="Disk full"):
+            await orchestrator.start_image_processing(valid_data, filename)
 
-            mock_cleanup.assert_called_once()
+        mock_file_storage.delete_image_and_variants.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_multiple_image_processing(self, orchestrator, sample_image_data):
+    async def test_multiple_image_processing(
+        self,
+        test_container,
+        mock_file_storage,
+        mock_variant_generator,
+        sample_image_data,
+    ):
         filenames = ["image1.jpg", "image2.jpg"]
 
+        mock_file_storage.save_original_image.return_value = (
+            "/fake/path",
+            {"file_size": 1024, "width": 100, "height": 100, "format": "JPEG"},
+        )
+
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_variant_generator(mock_variant_generator)
+        orchestrator = test_container.get_processing_orchestrator()
+
         with (
-            patch.object(orchestrator.file_storage, "save_original_image") as mock_save,
             patch.object(ImageModel, "create") as mock_create,
             patch.object(orchestrator, "_generate_variants_background") as _,
         ):
-            mock_save.return_value = (
-                "/fake/path",
-                {"file_size": 1024, "width": 100, "height": 100, "format": "JPEG"},
-            )
             mock_create.return_value = AsyncMock()
 
             results = []

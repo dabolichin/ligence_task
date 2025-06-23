@@ -14,10 +14,14 @@ from .file_storage import FileStorageService
 
 
 class VariantGenerationService:
-    def __init__(self):
+    def __init__(
+        self,
+        file_storage: Optional[FileStorageService] = None,
+        xor_algorithm: Optional[XORTransformAlgorithm] = None,
+    ):
         self.settings = get_settings()
-        self.file_storage = FileStorageService()
-        self.xor_algorithm = XORTransformAlgorithm()
+        self.file_storage = file_storage or FileStorageService()
+        self.xor_algorithm = xor_algorithm or XORTransformAlgorithm()
 
     async def generate_variants(
         self, original_image: Image.Image, image_record: ImageModel

@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from loguru import logger
 
+from ..core.dependencies import get_file_storage, get_processing_orchestrator
 from ..models import Image as ImageModel
 from ..models import Modification
 from ..schemas import (
@@ -13,16 +14,17 @@ from ..schemas import (
     VariantInfo,
     VariantListResponse,
 )
-from ..services import ProcessingOrchestrator
 from ..services.file_storage import FileStorageService
+from ..services.processing_orchestrator import ProcessingOrchestrator
 
 router = APIRouter()
-file_storage = FileStorageService()
-orchestrator = ProcessingOrchestrator()
 
 
 @router.post("/modify", response_model=ImageUploadResponse)
-async def modify_image(file: UploadFile = File(...)):
+async def modify_image(
+    file: UploadFile = File(...),
+    orchestrator: ProcessingOrchestrator = Depends(get_processing_orchestrator),
+):
     """
     Upload an image file and start processing to generate 100 variants.
 
@@ -81,7 +83,10 @@ async def modify_image(file: UploadFile = File(...)):
 
 
 @router.get("/processing/{processing_id}/status", response_model=ProcessingStatus)
-async def get_processing_status(processing_id: UUID):
+async def get_processing_status(
+    processing_id: UUID,
+    orchestrator: ProcessingOrchestrator = Depends(get_processing_orchestrator),
+):
     """
     Get the current processing status for an image.
 
@@ -123,7 +128,10 @@ async def get_processing_status(processing_id: UUID):
 
 
 @router.get("/modifications/{modification_id}", response_model=ModificationDetails)
-async def get_modification_details(modification_id: UUID):
+async def get_modification_details(
+    modification_id: UUID,
+    orchestrator: ProcessingOrchestrator = Depends(get_processing_orchestrator),
+):
     """
     Get detailed information about an image and its modifications.
 
@@ -167,7 +175,10 @@ async def get_modification_details(modification_id: UUID):
 
 
 @router.get("/images/{image_id}/original")
-async def serve_original_image(image_id: UUID):
+async def serve_original_image(
+    image_id: UUID,
+    file_storage: FileStorageService = Depends(get_file_storage),
+):
     """
     Serve the original image file.
 
@@ -205,7 +216,10 @@ async def serve_original_image(image_id: UUID):
 
 
 @router.get("/images/{image_id}/variants", response_model=VariantListResponse)
-async def list_image_variants(image_id: UUID):
+async def list_image_variants(
+    image_id: UUID,
+    orchestrator: ProcessingOrchestrator = Depends(get_processing_orchestrator),
+):
     """
     List all variants for an image.
 
@@ -252,7 +266,11 @@ async def list_image_variants(image_id: UUID):
 
 
 @router.get("/images/{image_id}/variants/{variant_id}")
-async def serve_variant_image(image_id: UUID, variant_id: UUID):
+async def serve_variant_image(
+    image_id: UUID,
+    variant_id: UUID,
+    file_storage: FileStorageService = Depends(get_file_storage),
+):
     """
     Serve a specific variant image file.
 

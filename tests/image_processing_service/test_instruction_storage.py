@@ -9,12 +9,14 @@ class TestInstructionStorage:
         "image_fixture,expected_mode,expected_channels",
         [
             ("small_sample_image", "RGB", 3),
-            ("small_grayscale_image", "L", 1),
+            ("grayscale_image", "L", 1),
         ],
     )
     async def test_complete_instruction_storage(
         self,
-        variant_service,
+        test_container,
+        mock_file_storage,
+        mock_xor_algorithm,
         request,
         mock_image_record,
         image_fixture,
@@ -31,17 +33,16 @@ class TestInstructionStorage:
             mock_modification.id = f"mod-{len(stored_instructions)}"
             return mock_modification
 
-        with (
-            patch.object(
-                variant_service.file_storage, "save_variant_image"
-            ) as mock_save,
-            patch(
-                "src.image_processing_service.app.services.variant_generation.Modification.create",
-                side_effect=capture_instructions,
-            ),
-        ):
-            mock_save.return_value = "/path/to/variant.jpg"
+        mock_file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
 
+        test_container.set_file_storage(mock_file_storage)
+        test_container.set_xor_algorithm(mock_xor_algorithm)
+        variant_service = test_container.get_variant_generator()
+
+        with patch(
+            "src.image_processing_service.app.services.variant_generation.Modification.create",
+            side_effect=capture_instructions,
+        ):
             variants = await variant_service.generate_variants(
                 test_image, mock_image_record
             )
