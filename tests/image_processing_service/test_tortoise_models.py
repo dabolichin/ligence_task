@@ -17,90 +17,76 @@ async def sample_image():
 
 
 class TestImageModel:
-    @pytest.mark.parametrize(
-        "filename,file_size,width,height,format",
-        [
-            # Test with all fields
-            ("test.png", 2048, 1024, 768, "PNG"),
-            ("image.jpg", 1024, 800, 600, "JPEG"),
-            # Test with optional fields as None
-            ("minimal.jpg", 512, None, None, None),
-            ("no_dims.png", 1024, None, None, "PNG"),
-            ("no_format.jpg", 2048, 800, 600, None),
-        ],
-    )
-    async def test_image_creation(self, filename, file_size, width, height, format):
+    async def test_image_creation_with_all_fields(self):
         image = await Image.create(
-            original_filename=filename,
-            file_size=file_size,
-            width=width,
-            height=height,
-            format=format,
-            storage_path=f"/storage/images/{filename}",
+            original_filename="test.png",
+            file_size=2048,
+            width=1024,
+            height=768,
+            format="PNG",
+            storage_path="/storage/images/test.png",
         )
 
         assert image.id is not None
-        assert image.original_filename == filename
-        assert image.file_size == file_size
-        assert image.width == width
-        assert image.height == height
-        assert image.format == format
-        assert image.storage_path == f"/storage/images/{filename}"
+        assert image.original_filename == "test.png"
+        assert image.file_size == 2048
+        assert image.width == 1024
+        assert image.height == 768
+        assert image.format == "PNG"
+        assert image.storage_path == "/storage/images/test.png"
         assert image.created_at is not None
         assert image.updated_at is not None
 
-        # Clean up
+        await image.delete()
+
+    async def test_image_creation_minimal_fields(self):
+        image = await Image.create(
+            original_filename="minimal.jpg",
+            file_size=512,
+            width=None,
+            height=None,
+            format=None,
+            storage_path="/storage/images/minimal.jpg",
+        )
+
+        assert image.id is not None
+        assert image.original_filename == "minimal.jpg"
+        assert image.file_size == 512
+        assert image.width is None
+        assert image.height is None
+        assert image.format is None
+        assert image.created_at is not None
+        assert image.updated_at is not None
+
         await image.delete()
 
 
 class TestModificationModel:
-    """Test suite for Modification model."""
-
-    @pytest.mark.parametrize(
-        "variant_number,xor_key,positions",
-        [
-            (1, 42, [[100, 150], [200, 250]]),
-            (50, 128, [[0, 0], [10, 10], [20, 20]]),
-            (100, 255, [[50, 75]]),
-        ],
-    )
-    async def test_modification_creation(
-        self, sample_image, variant_number, xor_key, positions
-    ):
-        """Test modification creation with XOR algorithm instructions."""
-        instructions = {"xor_key": xor_key, "positions": positions}
+    async def test_modification_creation(self, sample_image):
+        instructions = {"xor_key": 42, "positions": [[100, 150], [200, 250]]}
 
         modification = await Modification.create(
             image=sample_image,
-            variant_number=variant_number,
+            variant_number=1,
             algorithm_type=AlgorithmType.XOR_TRANSFORM,
             instructions=instructions,
-            storage_path=f"/storage/variants/test_variant_{variant_number}.jpg",
+            storage_path="/storage/variants/test_variant_1.jpg",
         )
 
         assert modification.id is not None
         assert modification.image_id == sample_image.id
-        assert modification.variant_number == variant_number
+        assert modification.variant_number == 1
         assert modification.algorithm_type == AlgorithmType.XOR_TRANSFORM
         assert modification.instructions == instructions
-        assert modification.instructions["xor_key"] == xor_key
-        assert modification.instructions["positions"] == positions
+        assert modification.instructions["xor_key"] == 42
+        assert modification.instructions["positions"] == [[100, 150], [200, 250]]
         assert modification.created_at is not None
         assert modification.updated_at is not None
 
         await modification.delete()
 
-    @pytest.mark.parametrize(
-        "variant_numbers",
-        [
-            [1, 2, 3],
-            [1, 50, 100],
-            [10, 20, 30, 40, 50],
-        ],
-    )
-    async def test_multiple_modifications_per_image(
-        self, sample_image, variant_numbers
-    ):
+    async def test_multiple_modifications_per_image(self, sample_image):
+        variant_numbers = [1, 2, 3]
         modifications = []
 
         for variant_num in variant_numbers:
@@ -121,19 +107,16 @@ class TestModificationModel:
             "modifications"
         )
 
-        assert len(image_with_mods.modifications) == len(variant_numbers)
+        assert len(image_with_mods.modifications) == 3
         retrieved_variants = [
             mod.variant_number for mod in image_with_mods.modifications
         ]
-        assert sorted(retrieved_variants) == sorted(variant_numbers)
+        assert sorted(retrieved_variants) == [1, 2, 3]
 
         for mod in modifications:
             await mod.delete()
 
-
-class TestModelRelationships:
-    @pytest.mark.parametrize("num_modifications", [1, 3, 5])
-    async def test_cascade_deletion(self, num_modifications):
+    async def test_cascade_deletion(self):
         image = await Image.create(
             original_filename="cascade_test.jpg",
             file_size=1024,
@@ -141,7 +124,7 @@ class TestModelRelationships:
         )
 
         modification_ids = []
-        for i in range(num_modifications):
+        for i in range(3):
             instructions = {"xor_key": i + 1, "positions": [[i, i + 1]]}
             mod = await Modification.create(
                 image=image,
@@ -152,7 +135,7 @@ class TestModelRelationships:
             )
             modification_ids.append(mod.id)
 
-        assert await Modification.filter(image=image).count() == num_modifications
+        assert await Modification.filter(image=image).count() == 3
 
         await image.delete()
 

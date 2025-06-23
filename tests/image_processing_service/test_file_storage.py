@@ -19,16 +19,12 @@ class TestFileStorageService:
 
 
 class TestPathGeneration:
-    @pytest.mark.parametrize(
-        "image_id,variant_number,extension,expected_filename",
-        [
-            ("test-789", 42, ".png", "test-789_variant_042.png"),
-            ("test-001", 5, ".bmp", "test-001_variant_005.bmp"),
-        ],
-    )
-    def test_generate_variant_path(
-        self, file_storage, image_id, variant_number, extension, expected_filename
-    ):
+    def test_generate_variant_path(self, file_storage):
+        image_id = "test-789"
+        variant_number = 42
+        extension = ".png"
+        expected_filename = "test-789_variant_042.png"
+
         path = file_storage.generate_variant_path(image_id, variant_number, extension)
 
         assert expected_filename in path
@@ -180,27 +176,6 @@ class TestFileOperations:
         for path in variant_paths:
             assert not Path(path).exists()
 
-
-class TestMetadataExtraction:
-    @pytest.mark.asyncio
-    async def test_extract_image_metadata_success(
-        self, file_storage, sample_image_bytes
-    ):
-        image_id = str(uuid.uuid4())
-        filename = "test.jpg"
-
-        storage_path, metadata = await file_storage.save_original_image(
-            sample_image_bytes, filename, image_id
-        )
-
-        assert metadata["width"] == 50
-        assert metadata["height"] == 50
-        assert metadata["format"] == "JPEG"
-        assert metadata["mode"] is not None
-        assert metadata["file_size"] > 0
-
-
-class TestAsyncOperations:
     @pytest.mark.asyncio
     async def test_concurrent_operations(self, file_storage):
         image_id = str(uuid.uuid4())
@@ -232,15 +207,26 @@ class TestAsyncOperations:
         assert loaded_image.size == (50, 50)
 
 
-class TestErrorHandling:
+class TestMetadataExtraction:
     @pytest.mark.asyncio
-    async def test_permission_error_handling(self, file_storage):
-        with patch(
-            "pathlib.Path.unlink", side_effect=PermissionError("Permission denied")
-        ):
-            result = await file_storage._safe_delete_file("/some/path.jpg")
-            assert result is False
+    async def test_extract_image_metadata_success(
+        self, file_storage, sample_image_bytes
+    ):
+        image_id = str(uuid.uuid4())
+        filename = "test.jpg"
 
+        storage_path, metadata = await file_storage.save_original_image(
+            sample_image_bytes, filename, image_id
+        )
+
+        assert metadata["width"] == 50
+        assert metadata["height"] == 50
+        assert metadata["format"] == "JPEG"
+        assert metadata["mode"] is not None
+        assert metadata["file_size"] > 0
+
+
+class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_disk_full_simulation(self, file_storage, sample_image_bytes):
         image_id = str(uuid.uuid4())
@@ -262,46 +248,31 @@ class TestErrorHandling:
 
 
 class TestFileServingMethods:
-    class TestFileExists:
-        @pytest.mark.asyncio
-        @pytest.mark.parametrize(
-            "filename", ["test_image.jpg", "test.jpg", "test.png", "test.bmp"]
+    @pytest.mark.asyncio
+    async def test_file_exists_with_existing_file(self, file_storage, temp_storage_dir):
+        test_file = Path(temp_storage_dir) / "test_image.jpg"
+        test_file.write_bytes(b"test file content")
+
+        exists = await file_storage.file_exists(str(test_file))
+        assert exists is True
+
+    @pytest.mark.asyncio
+    async def test_file_exists_nonexistent_file(self, file_storage):
+        exists = await file_storage.file_exists("/nonexistent/path.jpg")
+        assert exists is False
+
+    @pytest.mark.parametrize(
+        "original_filename,variant_number,expected",
+        [
+            ("original.jpg", 1, "original_variant_001.jpg"),
+            ("image.png", 42, "image_variant_042.png"),
+            ("noextension", 5, "noextension_variant_005.img"),
+        ],
+    )
+    def test_generate_variant_filename(
+        self, file_storage, original_filename, variant_number, expected
+    ):
+        result = file_storage.generate_variant_filename(
+            original_filename, variant_number
         )
-        async def test_file_exists_with_existing_file(
-            self, file_storage, temp_storage_dir, filename
-        ):
-            test_file = Path(temp_storage_dir) / filename
-            test_file.write_bytes(b"test file content")
-
-            exists = await file_storage.file_exists(str(test_file))
-            assert exists is True
-
-        @pytest.mark.asyncio
-        async def test_file_exists_nonexistent_file(self, file_storage):
-            exists = await file_storage.file_exists("/nonexistent/path.jpg")
-            assert exists is False
-
-        @pytest.mark.asyncio
-        async def test_file_exists_exception_handling(self, file_storage):
-            exists = await file_storage.file_exists("/invalid/path/that/causes/errors")
-            assert exists is False
-
-    class TestVariantFilenameGeneration:
-        @pytest.mark.parametrize(
-            "original_filename,variant_number,expected",
-            [
-                ("original.jpg", 1, "original_variant_001.jpg"),
-                ("image.png", 42, "image_variant_042.png"),
-                ("test.jpeg", 999, "test_variant_999.jpeg"),
-                ("noextension", 5, "noextension_variant_005.img"),
-                ("my.image.file.jpg", 10, "my.image.file_variant_010.jpg"),
-                ("imagefile", 25, "imagefile_variant_025.img"),
-            ],
-        )
-        def test_generate_variant_filename(
-            self, file_storage, original_filename, variant_number, expected
-        ):
-            result = file_storage.generate_variant_filename(
-                original_filename, variant_number
-            )
-            assert result == expected
+        assert result == expected

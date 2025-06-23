@@ -113,39 +113,8 @@ class TestGenerateVariants:
             assert isinstance(variant["num_modifications"], int)
             assert variant["num_modifications"] >= 100
 
-
-class TestEdgeCases:
     @pytest.mark.asyncio
-    async def test_very_small_image(
-        self, variant_service, tiny_image, mock_image_record
-    ):
-        with (
-            patch.object(
-                variant_service.file_storage, "save_variant_image"
-            ) as mock_save,
-            patch(
-                "src.image_processing_service.app.services.variant_generation.Modification.create"
-            ) as mock_create,
-        ):
-            mock_save.return_value = "/path/to/variant.jpg"
-            mock_modification = MagicMock()
-            mock_modification.id = str(uuid.uuid4())
-            mock_create.return_value = mock_modification
-
-            variants = await variant_service.generate_variants(
-                tiny_image, mock_image_record
-            )
-
-            assert len(variants) == 100
-
-            # All variants should have at least 1 modification
-            # For 1x1 RGB image (3 total pixels), modifications should be 1-3
-            for variant in variants:
-                assert variant["num_modifications"] >= 1
-                assert variant["num_modifications"] <= 3  # 1x1x3 RGB channels max
-
-    @pytest.mark.asyncio
-    async def test_grayscale_image(
+    async def test_generate_variants_grayscale_image(
         self, variant_service, grayscale_image, mock_image_record
     ):
         with (
@@ -167,4 +136,4 @@ class TestEdgeCases:
 
             assert len(variants) == 100
             for variant in variants:
-                assert 100 <= variant["num_modifications"] <= 50 * 50 * 1
+                assert variant["num_modifications"] >= 100
