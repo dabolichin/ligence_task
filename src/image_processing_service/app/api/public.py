@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from loguru import logger
 
@@ -22,6 +22,7 @@ router = APIRouter()
 
 @router.post("/modify", response_model=ImageUploadResponse)
 async def modify_image(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     orchestrator: ProcessingOrchestrator = Depends(get_processing_orchestrator),
 ):
@@ -59,6 +60,9 @@ async def modify_image(
         image_id, processing_info = await orchestrator.start_image_processing(
             file_data, file.filename
         )
+
+        # Add background task for variant generation
+        background_tasks.add_task(orchestrator.process_variants_background, image_id)
 
         logger.info(f"Started processing image {file.filename} with ID {image_id}")
 
@@ -245,7 +249,7 @@ async def list_image_variants(
                 variant_id=UUID(str(mod.id)),
                 variant_number=mod.variant_number,
                 algorithm_type=mod.algorithm_type.value,
-                num_modifications=len(mod.instructions.get("modifications", [])),
+                num_modifications=len(mod.instructions.get("operations", [])),
                 storage_path=mod.storage_path,
                 created_at=mod.created_at,
             )
@@ -253,7 +257,7 @@ async def list_image_variants(
         ]
 
         return VariantListResponse(
-            image_id=UUID(image_id),
+            image_id=image_id,
             variants=variants,
             total_count=len(variants),
         )

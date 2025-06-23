@@ -110,9 +110,7 @@ class TestProcessingStatusEndpoint:
         )
         test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
-        response = test_client.get(
-            f"/api/processing/{processing_id}/status"
-        )
+        response = test_client.get(f"/api/processing/{processing_id}/status")
 
         assert response.status_code == 200
         data = response.json()
@@ -132,9 +130,7 @@ class TestProcessingStatusEndpoint:
         mock_processing_orchestrator.get_processing_status.return_value = None
         test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
-        response = test_client.get(
-            f"/api/processing/{processing_id}/status"
-        )
+        response = test_client.get(f"/api/processing/{processing_id}/status")
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
 
@@ -168,9 +164,7 @@ class TestModificationDetailsEndpoint:
         mock_processing_orchestrator.get_modification_details.return_value = mock_result
         test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
-        response = test_client.get(
-            f"/api/modifications/{modification_id}"
-        )
+        response = test_client.get(f"/api/modifications/{modification_id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -193,9 +187,7 @@ class TestModificationDetailsEndpoint:
         mock_processing_orchestrator.get_modification_details.return_value = None
         test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
-        response = test_client.get(
-            f"/api/modifications/{modification_id}"
-        )
+        response = test_client.get(f"/api/modifications/{modification_id}")
 
         assert response.status_code == 404
         assert f"Image {modification_id} not found" in response.json()["detail"]
@@ -225,9 +217,7 @@ class TestOriginalImageEndpoint:
                 mock_image.original_filename = "test.jpg"
                 mock_get.return_value = mock_image
 
-                response = test_client.get(
-                    f"/api/images/{image_id}/original"
-                )
+                response = test_client.get(f"/api/images/{image_id}/original")
 
                 assert response.status_code == 500
         finally:
@@ -237,9 +227,7 @@ class TestOriginalImageEndpoint:
         image_id = uuid4()
         with patch("src.image_processing_service.app.models.Image.get") as mock_get:
             mock_get.side_effect = Exception("DoesNotExist")
-            response = test_client.get(
-                f"/api/images/{image_id}/original"
-            )
+            response = test_client.get(f"/api/images/{image_id}/original")
             assert response.status_code == 500
 
     def test_serve_original_image_file_missing(
@@ -258,9 +246,7 @@ class TestOriginalImageEndpoint:
             mock_image.original_filename = "test.jpg"
             mock_get.return_value = mock_image
 
-            response = test_client.get(
-                f"/api/images/{image_id}/original"
-            )
+            response = test_client.get(f"/api/images/{image_id}/original")
             assert response.status_code == 500
 
 
@@ -293,7 +279,22 @@ class TestVariantListEndpoint:
 
         response = test_client.get(f"/api/images/{image_id}/variants")
 
-        assert response.status_code == 500
+        assert response.status_code == 200
+        data = response.json()
+        assert "variants" in data
+        assert "total_count" in data
+        assert data["total_count"] == 3
+        assert len(data["variants"]) == 3
+
+        # Check first variant structure
+        variant = data["variants"][0]
+        assert "variant_id" in variant
+        assert "variant_number" in variant
+        assert "algorithm_type" in variant
+        assert "num_modifications" in variant
+        assert "storage_path" in variant
+        assert "created_at" in variant
+        assert variant["algorithm_type"] == "xor_transform"
 
     def test_list_image_variants_not_found(
         self,
@@ -457,4 +458,8 @@ class TestEndToEndWorkflow:
 
         variants_response = test_client.get(f"/api/images/{processing_id}/variants")
 
-        assert variants_response.status_code == 500
+        assert variants_response.status_code == 200
+        data = variants_response.json()
+        assert "variants" in data
+        assert "total_count" in data
+        assert data["total_count"] == 100

@@ -1,5 +1,4 @@
 import io
-import time
 import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -79,8 +78,8 @@ class TestCompleteServiceWorkflow:
         )
         mock_settings.absolute_temp_dir = str(Path(temp_storage_dir) / "temp")
         mock_settings.ALLOWED_IMAGE_FORMATS = ["jpeg", "png", "bmp"]
-        mock_settings.VARIANTS_COUNT = 5  # Reduced for faster testing
-        mock_settings.MIN_MODIFICATIONS_PER_VARIANT = 10  # Reduced for faster testing
+        mock_settings.VARIANTS_COUNT = 100
+        mock_settings.MIN_MODIFICATIONS_PER_VARIANT = 100
 
         container = ServiceContainer()
 
@@ -124,16 +123,12 @@ class TestCompleteServiceWorkflow:
         """Get real tiny test image data for fastest testing."""
         return RealImageFixtures.load_pattern_test_image()
 
-    async def _wait_for_processing_start(self, client, processing_id, max_attempts=10):
-        for attempt in range(max_attempts):
-            status_response = client.get(f"/api/processing/{processing_id}/status")
-            assert status_response.status_code == 200
-            status_data = status_response.json()
+    async def _check_for_processing_start(self, client, processing_id):
+        status_response = client.get(f"/api/processing/{processing_id}/status")
+        assert status_response.status_code == 200
+        status_data = status_response.json()
 
-            if status_data["status"] in ["processing", "completed"]:
-                return status_data
-            else:
-                time.sleep(0.1)
+        assert status_data["status"] in ["processing", "completed"]
 
         return status_data
 
@@ -158,37 +153,37 @@ class TestCompleteServiceWorkflow:
 
         processing_id = upload_data["processing_id"]
 
-        # Step 2: Wait for processing to start
-        status_data = await self._wait_for_processing_start(client, processing_id)
+        # Step 2: Check for processing to start
+        status_data = await self._check_for_processing_start(client, processing_id)
 
         assert status_data["status"] in ["processing", "completed"], (
             f"Processing failed to start: {status_data['status']}"
         )
         assert status_data["total_variants"] == 100
 
-        # Step 3: Test API endpoints work (accept processing state)
+        # Step 3: Test API endpoints work
         details_response = client.get(f"/api/modifications/{processing_id}")
-        if details_response.status_code == 200:
-            details_data = details_response.json()
-            assert details_data["image_id"] == processing_id
-            assert details_data["original_filename"] == filename
+        assert details_response.status_code == 200
+        details_data = details_response.json()
+        assert details_data["image_id"] == processing_id
+        assert details_data["original_filename"] == filename
 
         # Step 4: Test original image serving
         original_response = client.get(f"/api/images/{processing_id}/original")
         assert original_response.status_code == 200
         assert "image/" in original_response.headers["content-type"]
 
-        # Step 5: Test variants listing (may be empty if still processing)
+        # Step 5: Test variants listing
         variants_response = client.get(f"/api/images/{processing_id}/variants")
-        if variants_response.status_code == 200:
-            variants_data = variants_response.json()
-            assert isinstance(variants_data["variants"], list)
-            for variant in variants_data["variants"]:
-                assert "variant_id" in variant
-                assert "variant_number" in variant
-                assert "storage_path" in variant
-                assert "num_modifications" in variant
-                assert variant["num_modifications"] >= 1
+        assert variants_response.status_code == 200
+        variants_data = variants_response.json()
+        assert isinstance(variants_data["variants"], list)
+        for variant in variants_data["variants"]:
+            assert "variant_id" in variant
+            assert "variant_number" in variant
+            assert "storage_path" in variant
+            assert "num_modifications" in variant
+            assert variant["num_modifications"] >= 1
 
     @pytest.mark.asyncio
     async def test_workflow_with_file_system_persistence(
@@ -205,16 +200,13 @@ class TestCompleteServiceWorkflow:
         assert upload_response.status_code == 200
         processing_id = upload_response.json()["processing_id"]
 
-        status_data = await self._wait_for_processing_start(client, processing_id)
+        status_data = await self._check_for_processing_start(client, processing_id)
         assert status_data["status"] in ["processing", "completed"]
 
         original_dir = Path(temp_storage_dir) / "original"
         original_files = list(original_dir.glob(f"{processing_id}_original.*"))
         assert len(original_files) == 1
         assert original_files[0].exists()
-
-        # Give processing some time to create some variants
-        time.sleep(0.5)
 
         modified_dir = Path(temp_storage_dir) / "modified"
         variant_files = list(modified_dir.glob(f"{processing_id}_variant_*.jpg"))
@@ -267,7 +259,7 @@ class TestCompleteServiceWorkflow:
             upload_tasks.append(response.json()["processing_id"])
 
         for i, processing_id in enumerate(upload_tasks):
-            status_data = await self._wait_for_processing_start(client, processing_id)
+            status_data = await self._check_for_processing_start(client, processing_id)
             assert status_data["status"] in ["processing", "completed"], (
                 f"Concurrent processing {i + 1} failed to start: {status_data['status']}"
             )
@@ -296,7 +288,7 @@ class TestCompleteServiceWorkflow:
         assert upload_response.status_code == 200
         processing_id = upload_response.json()["processing_id"]
 
-        status_data = await self._wait_for_processing_start(client, processing_id)
+        status_data = await self._check_for_processing_start(client, processing_id)
         assert status_data["status"] in ["processing", "completed"], (
             f"Service integration test failed: {status_data['status']}"
         )
@@ -321,29 +313,26 @@ class TestCompleteServiceWorkflow:
         assert upload_response.status_code == 200
         processing_id = upload_response.json()["processing_id"]
 
-        status_data = await self._wait_for_processing_start(client, processing_id)
+        status_data = await self._check_for_processing_start(client, processing_id)
         assert status_data["status"] in ["processing", "completed"]
 
-        # Give processing time to create some variants
-        time.sleep(0.5)
-
         variants_response = client.get(f"/api/images/{processing_id}/variants")
-        if variants_response.status_code == 200:
-            variants_data = variants_response.json()
-            assert isinstance(variants_data["variants"], list)
+        assert variants_response.status_code == 200
+        variants_data = variants_response.json()
+        assert isinstance(variants_data["variants"], list)
 
-            if len(variants_data["variants"]) > 0:
-                modification_id = variants_data["variants"][0]["modification_id"]
-                instructions_response = client.get(
-                    f"/internal/modifications/{modification_id}/instructions"
-                )
-                assert instructions_response.status_code == 200
-                instructions_data = instructions_response.json()
+        assert len(variants_data["variants"]) > 0
+        modification_id = variants_data["variants"][0]["variant_id"]
+        instructions_response = client.get(
+            f"/internal/modifications/{modification_id}/instructions"
+        )
+        assert instructions_response.status_code == 200
+        instructions_data = instructions_response.json()
 
-                assert instructions_data["modification_id"] == modification_id
-                assert instructions_data["algorithm_type"] == "xor_transform"
-                assert "instructions" in instructions_data
-                assert len(instructions_data["instructions"]) > 0
+        assert instructions_data["modification_id"] == modification_id
+        assert instructions_data["algorithm_type"] == "xor_transform"
+        assert "instructions" in instructions_data
+        assert len(instructions_data["instructions"]) > 0
 
     @pytest.mark.asyncio
     async def test_large_image_workflow(self, integration_client):
@@ -361,23 +350,20 @@ class TestCompleteServiceWorkflow:
 
         assert upload_response.json()["file_size"] == len(test_image_data)
 
-        status_data = await self._wait_for_processing_start(client, processing_id)
+        status_data = await self._check_for_processing_start(client, processing_id)
         assert status_data["status"] in ["processing", "completed"], (
             f"Large image test failed: {status_data['status']}"
         )
         assert status_data["total_variants"] == 100
 
-        # Give processing time to create some variants
-        time.sleep(0.5)
-
         variants_response = client.get(f"/api/images/{processing_id}/variants")
-        if variants_response.status_code == 200:
-            variants_data = variants_response.json()
-            assert isinstance(variants_data["variants"], list)
+        assert variants_response.status_code == 200
+        variants_data = variants_response.json()
+        assert isinstance(variants_data["variants"], list)
 
-            # For completed variants, verify basic structure
-            for variant in variants_data["variants"]:
-                assert variant["num_modifications"] in [1, 4]
+        # For completed variants, verify basic structure
+        for variant in variants_data["variants"]:
+            assert variant["num_modifications"] >= 1
 
     @pytest.mark.asyncio
     async def test_grayscale_image_workflow(self, integration_client):
@@ -393,7 +379,7 @@ class TestCompleteServiceWorkflow:
         assert upload_response.status_code == 200
         processing_id = upload_response.json()["processing_id"]
 
-        status_data = await self._wait_for_processing_start(client, processing_id)
+        status_data = await self._check_for_processing_start(client, processing_id)
         assert status_data["status"] in ["processing", "completed"]
 
         details_response = client.get(f"/api/modifications/{processing_id}")
@@ -401,22 +387,19 @@ class TestCompleteServiceWorkflow:
         details_data = details_response.json()
         assert details_data["format"] == "PNG"
 
-        # Give processing time to create some variants
-        time.sleep(0.5)
-
         variants_response = client.get(f"/api/images/{processing_id}/variants")
-        if variants_response.status_code == 200:
-            variants_data = variants_response.json()
-            assert isinstance(variants_data["variants"], list)
+        assert variants_response.status_code == 200
+        variants_data = variants_response.json()
+        assert isinstance(variants_data["variants"], list)
 
-            # If variants exist, test modification instructions for grayscale
-            assert len(variants_data["variants"]) > 0
-            modification_id = variants_data["variants"][0]["modification_id"]
-            instructions_response = client.get(
-                f"/internal/modifications/{modification_id}/instructions"
-            )
+        # If variants exist, test modification instructions for grayscale
+        assert len(variants_data["variants"]) > 0
+        modification_id = variants_data["variants"][0]["variant_id"]
+        instructions_response = client.get(
+            f"/internal/modifications/{modification_id}/instructions"
+        )
 
-            assert instructions_response.status_code == 200
-            instructions_data = instructions_response.json()
-            assert "instructions" in instructions_data
-            assert instructions_data["algorithm_type"] == "xor_transform"
+        assert instructions_response.status_code == 200
+        instructions_data = instructions_response.json()
+        assert "instructions" in instructions_data
+        assert instructions_data["algorithm_type"] == "xor_transform"

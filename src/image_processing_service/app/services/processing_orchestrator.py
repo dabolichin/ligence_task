@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 from typing import Dict, List, Optional, Tuple
 
@@ -46,18 +45,25 @@ class ProcessingOrchestrator:
                 storage_path=storage_path,
             )
 
-            asyncio.create_task(self._generate_variants_background(image_record))
-
+            # Background task will be added by the API endpoint
             return image_id, {
-                "processing_id": image_id,
+                "processing_id": image_record.id,
                 "message": "Image upload successful, processing started",
-                "original_filename": original_filename,
-                "file_size": metadata["file_size"],
+                "original_filename": image_record.original_filename,
+                "file_size": image_record.file_size,
             }
 
         except Exception:
             await self._cleanup_image_and_records(image_id)
             raise
+
+    async def process_variants_background(self, image_id: str):
+        """Public method for FastAPI BackgroundTasks to process variants."""
+        try:
+            image_record = await ImageModel.get(id=image_id)
+            await self._generate_variants_background(image_record)
+        except Exception as e:
+            logger.error(f"Background task failed for image {image_id}: {e}")
 
     async def _generate_variants_background(self, image_record: ImageModel):
         image_id = str(image_record.id)
