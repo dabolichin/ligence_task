@@ -1,56 +1,10 @@
 import asyncio
-import tempfile
 import uuid
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from PIL import Image
-
-from src.image_processing_service.app.services.file_storage import FileStorageService
-
-
-@pytest.fixture
-def temp_storage_dir():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        yield temp_dir
-
-
-@pytest.fixture
-def mock_settings(temp_storage_dir):
-    settings = MagicMock()
-    settings.absolute_original_images_dir = str(Path(temp_storage_dir) / "original")
-    settings.absolute_modified_images_dir = str(Path(temp_storage_dir) / "modified")
-    settings.absolute_temp_dir = str(Path(temp_storage_dir) / "temp")
-    settings.ALLOWED_IMAGE_FORMATS = ["jpeg", "png", "bmp"]
-    settings.MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-    return settings
-
-
-@pytest.fixture
-def file_storage(mock_settings):
-    with patch(
-        "src.image_processing_service.app.services.file_storage.get_settings",
-        return_value=mock_settings,
-    ):
-        return FileStorageService()
-
-
-@pytest.fixture
-def sample_image():
-    image = Image.new("RGB", (100, 100), color="red")
-    return image
-
-
-@pytest.fixture
-def sample_image_bytes():
-    """Create sample image bytes for testing."""
-    image = Image.new("RGB", (50, 50), color="blue")
-    import io
-
-    img_bytes = io.BytesIO()
-    image.save(img_bytes, format="JPEG")
-    return img_bytes.getvalue()
 
 
 class TestFileStorageService:
@@ -65,26 +19,20 @@ class TestFileStorageService:
 
 
 class TestPathGeneration:
-    def test_generate_variant_path(self, file_storage):
-        """Test variant image path generation."""
-        image_id = "test-789"
-        variant_number = 42
-        extension = ".png"
-
+    @pytest.mark.parametrize(
+        "image_id,variant_number,extension,expected_filename",
+        [
+            ("test-789", 42, ".png", "test-789_variant_042.png"),
+            ("test-001", 5, ".bmp", "test-001_variant_005.bmp"),
+        ],
+    )
+    def test_generate_variant_path(
+        self, file_storage, image_id, variant_number, extension, expected_filename
+    ):
         path = file_storage.generate_variant_path(image_id, variant_number, extension)
 
-        assert "test-789_variant_042.png" in path
+        assert expected_filename in path
         assert "modified" in path
-
-    def test_generate_variant_path_with_zero_padding(self, file_storage):
-        """Test variant path generation with proper zero padding."""
-        image_id = "test-001"
-        variant_number = 5
-        extension = ".bmp"
-
-        path = file_storage.generate_variant_path(image_id, variant_number, extension)
-
-        assert "test-001_variant_005.bmp" in path
 
 
 class TestSaveOriginalImage:
@@ -257,15 +205,12 @@ class TestAsyncOperations:
     async def test_concurrent_operations(self, file_storage):
         image_id = str(uuid.uuid4())
 
-        # Run multiple save operations concurrently with fresh images
         tasks = []
         for i in range(5):
-            # Create fresh image for each task to avoid sharing issues
             fresh_image = Image.new("RGB", (100, 100), color="red")
             task = file_storage.save_variant_image(fresh_image, image_id, i + 1, ".jpg")
             tasks.append(task)
 
-        # Wait for all to complete
         paths = await asyncio.gather(*tasks)
 
         assert len(paths) == 5
@@ -277,7 +222,6 @@ class TestAsyncOperations:
         image_id = str(uuid.uuid4())
         filename = "context_test.jpg"
 
-        # This should not raise any context-related errors
         storage_path, metadata = await file_storage.save_original_image(
             sample_image_bytes, filename, image_id
         )
@@ -315,3 +259,49 @@ class TestErrorHandling:
 
         with pytest.raises(IOError):
             await file_storage.load_image(str(corrupted_path))
+
+
+class TestFileServingMethods:
+    class TestFileExists:
+        @pytest.mark.asyncio
+        @pytest.mark.parametrize(
+            "filename", ["test_image.jpg", "test.jpg", "test.png", "test.bmp"]
+        )
+        async def test_file_exists_with_existing_file(
+            self, file_storage, temp_storage_dir, filename
+        ):
+            test_file = Path(temp_storage_dir) / filename
+            test_file.write_bytes(b"test file content")
+
+            exists = await file_storage.file_exists(str(test_file))
+            assert exists is True
+
+        @pytest.mark.asyncio
+        async def test_file_exists_nonexistent_file(self, file_storage):
+            exists = await file_storage.file_exists("/nonexistent/path.jpg")
+            assert exists is False
+
+        @pytest.mark.asyncio
+        async def test_file_exists_exception_handling(self, file_storage):
+            exists = await file_storage.file_exists("/invalid/path/that/causes/errors")
+            assert exists is False
+
+    class TestVariantFilenameGeneration:
+        @pytest.mark.parametrize(
+            "original_filename,variant_number,expected",
+            [
+                ("original.jpg", 1, "original_variant_001.jpg"),
+                ("image.png", 42, "image_variant_042.png"),
+                ("test.jpeg", 999, "test_variant_999.jpeg"),
+                ("noextension", 5, "noextension_variant_005.img"),
+                ("my.image.file.jpg", 10, "my.image.file_variant_010.jpg"),
+                ("imagefile", 25, "imagefile_variant_025.img"),
+            ],
+        )
+        def test_generate_variant_filename(
+            self, file_storage, original_filename, variant_number, expected
+        ):
+            result = file_storage.generate_variant_filename(
+                original_filename, variant_number
+            )
+            assert result == expected

@@ -1,3 +1,4 @@
+import io
 import tempfile
 import uuid
 from pathlib import Path
@@ -5,8 +6,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from PIL import Image
+from tortoise import Tortoise
 
 from src.image_processing_service.app.models import Image as ImageModel
+from src.image_processing_service.app.services.file_storage import FileStorageService
+from src.image_processing_service.app.services.processing_orchestrator import (
+    ProcessingOrchestrator,
+)
 from src.image_processing_service.app.services.variant_generation import (
     VariantGenerationService,
 )
@@ -36,11 +42,12 @@ def mock_settings(temp_storage_dir):
 def mock_image_record():
     record = AsyncMock(spec=ImageModel)
     record.id = str(uuid.uuid4())
-    record.filename = "test_image.jpg"
+    record.original_filename = "test_image.jpg"
     record.format = "JPEG"
-    record.size = 1024
+    record.file_size = 1024
     record.width = 100
     record.height = 100
+    record.storage_path = "/fake/path/to/image.jpg"
     return record
 
 
@@ -87,3 +94,45 @@ def mock_modification_record():
     mock_modification.instructions = {}
     mock_modification.storage_path = "/path/to/variant.jpg"
     return mock_modification
+
+
+@pytest.fixture
+def sample_image_bytes():
+    image = Image.new("RGB", (50, 50), color="blue")
+    img_bytes = io.BytesIO()
+    image.save(img_bytes, format="JPEG")
+    return img_bytes.getvalue()
+
+
+@pytest.fixture
+def file_storage(mock_settings):
+    with patch(
+        "src.image_processing_service.app.services.file_storage.get_settings",
+        return_value=mock_settings,
+    ):
+        return FileStorageService()
+
+
+@pytest.fixture
+def orchestrator(mock_settings):
+    with patch(
+        "src.image_processing_service.app.services.processing_orchestrator.get_settings",
+        return_value=mock_settings,
+    ):
+        return ProcessingOrchestrator()
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def setup_tortoise():
+    await Tortoise.init(
+        db_url="sqlite://:memory:",
+        modules={
+            "models": [
+                "src.image_processing_service.app.models.image",
+                "src.image_processing_service.app.models.modification",
+            ]
+        },
+    )
+    await Tortoise.generate_schemas()
+    yield
+    await Tortoise.close_connections()

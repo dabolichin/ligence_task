@@ -1,0 +1,154 @@
+import asyncio
+import logging
+import uuid
+from typing import Dict, List, Optional, Tuple
+
+from ..core.config import get_settings
+from ..models import Image as ImageModel
+from ..models import Modification
+from .domain import ImageWithVariants, ProcessingResult
+from .file_storage import FileStorageService
+from .variant_generation import VariantGenerationService
+
+
+class ProcessingOrchestrator:
+    def __init__(self):
+        self.settings = get_settings()
+        self.file_storage = FileStorageService()
+        self.variant_generator = VariantGenerationService()
+        self.logger = logging.getLogger(__name__)
+
+    async def start_image_processing(
+        self, file_data: bytes, original_filename: str
+    ) -> Tuple[str, Dict]:
+        image_id = str(uuid.uuid4())
+
+        try:
+            self.logger.info(
+                f"Starting image processing for {original_filename} (ID: {image_id})"
+            )
+
+            storage_path, metadata = await self.file_storage.save_original_image(
+                file_data, original_filename, image_id
+            )
+
+            image_record = await ImageModel.create(
+                id=image_id,
+                original_filename=original_filename,
+                file_size=metadata["file_size"],
+                width=metadata["width"],
+                height=metadata["height"],
+                format=metadata["format"],
+                storage_path=storage_path,
+            )
+
+            asyncio.create_task(self._generate_variants_background(image_record))
+
+            return image_id, {
+                "processing_id": image_id,
+                "message": "Image upload successful, processing started",
+                "original_filename": original_filename,
+                "file_size": metadata["file_size"],
+            }
+
+        except Exception:
+            await self._cleanup_image_and_records(image_id)
+            raise
+
+    async def _generate_variants_background(self, image_record: ImageModel):
+        image_id = str(image_record.id)
+
+        try:
+            self.logger.info(f"Starting variant generation for image {image_id}")
+
+            original_image = await self.file_storage.load_image(
+                image_record.storage_path
+            )
+
+            await self.variant_generator.generate_variants(original_image, image_record)
+
+            self.logger.info(f"Successfully generated variants for image {image_id}")
+
+            await self._notify_verification_service(image_id)
+
+        except Exception as e:
+            self.logger.error(f"Failed to process variants for image {image_id}: {e}")
+
+            await self._cleanup_image_and_records(image_id, image_record)
+
+    async def _cleanup_image_and_records(
+        self, image_id: str, image_record: Optional[ImageModel] = None
+    ):
+        try:
+            await self.file_storage.delete_image_and_variants(image_id)
+
+            await Modification.filter(image_id=image_id).delete()
+
+            if image_record:
+                await image_record.delete()
+
+        except Exception as cleanup_error:
+            self.logger.warning(
+                f"Failed to cleanup for image {image_id}: {cleanup_error}"
+            )
+
+    async def _notify_verification_service(self, image_id: str):
+        self.logger.info(f"TODO: Notify verification service for image {image_id}")
+        pass
+
+    async def get_processing_status(
+        self, processing_id: str
+    ) -> Optional[ProcessingResult]:
+        try:
+            image_record = await ImageModel.get(id=processing_id)
+
+            variants_count = await Modification.filter(image_id=processing_id).count()
+
+            if variants_count == 0:
+                status = "processing"
+                progress = 0
+            elif variants_count < 100:
+                status = "processing"
+                progress = variants_count
+            else:
+                status = "completed"
+                progress = 100
+
+            return ProcessingResult(
+                processing_id=processing_id,
+                status=status,
+                progress=progress,
+                variants_completed=variants_count,
+                total_variants=100,
+                created_at=image_record.created_at,
+                completed_at=image_record.updated_at if status == "completed" else None,
+                error_message=None,
+            )
+
+        except Exception:
+            return None
+
+    async def get_modification_details(
+        self, image_id: str
+    ) -> Optional[ImageWithVariants]:
+        try:
+            image_record = await ImageModel.get(id=image_id)
+            variants_count = await Modification.filter(image_id=image_id).count()
+
+            return ImageWithVariants(image=image_record, variants_count=variants_count)
+
+        except Exception:
+            return None
+
+    async def get_image_variants(self, image_id: str) -> Optional[List[Modification]]:
+        try:
+            await ImageModel.get(id=image_id)
+
+            modifications = await Modification.filter(image_id=image_id).order_by(
+                "variant_number"
+            )
+
+            return modifications
+
+        except Exception:
+            return None

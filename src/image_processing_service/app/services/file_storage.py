@@ -59,10 +59,18 @@ class FileStorageService:
         if image_format not in self.settings.ALLOWED_IMAGE_FORMATS:
             raise ValueError(f"Unsupported image format: {image_format}")
 
+    def _format_variant_name(
+        self, base_name: str, variant_number: int, extension: str
+    ) -> str:
+        """Generate a variant name with consistent formatting."""
+        return f"{base_name}_variant_{variant_number:03d}{extension}"
+
     def generate_variant_path(
         self, image_id: str, variant_number: int, extension: str
     ) -> str:
-        variant_filename = f"{image_id}_variant_{variant_number:03d}{extension}"
+        variant_filename = self._format_variant_name(
+            image_id, variant_number, extension
+        )
 
         return str(Path(self.settings.absolute_modified_images_dir) / variant_filename)
 
@@ -161,7 +169,23 @@ class FileStorageService:
                 return True
             return False
         except (OSError, IOError, PermissionError):
-            # Ignore common file system errors
             return False
         except Exception:
             return False
+
+    async def file_exists(self, file_path: str) -> bool:
+        try:
+            path = Path(file_path)
+            return path.exists()
+
+        except Exception:
+            return False
+
+    def generate_variant_filename(
+        self, original_filename: str, variant_number: int
+    ) -> str:
+        base_name = original_filename.rsplit(".", 1)[0]
+        extension = (
+            original_filename.rsplit(".", 1)[1] if "." in original_filename else "img"
+        )
+        return self._format_variant_name(base_name, variant_number, f".{extension}")

@@ -1,23 +1,6 @@
 import pytest
-from tortoise import Tortoise
 
 from src.image_processing_service.app.models import AlgorithmType, Image, Modification
-
-
-@pytest.fixture(scope="session", autouse=True)
-async def setup_tortoise():
-    await Tortoise.init(
-        db_url="sqlite://:memory:",
-        modules={
-            "models": [
-                "src.image_processing_service.app.models.image",
-                "src.image_processing_service.app.models.modification",
-            ]
-        },
-    )
-    await Tortoise.generate_schemas()
-    yield
-    await Tortoise.close_connections()
 
 
 @pytest.fixture

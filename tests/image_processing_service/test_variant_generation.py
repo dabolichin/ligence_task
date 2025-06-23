@@ -113,36 +113,6 @@ class TestGenerateVariants:
             assert isinstance(variant["num_modifications"], int)
             assert variant["num_modifications"] >= 100
 
-    @pytest.mark.asyncio
-    async def test_cleanup_on_failure(
-        self, variant_service, sample_image, mock_image_record
-    ):
-        with (
-            patch.object(
-                variant_service.file_storage, "save_variant_image"
-            ) as mock_save,
-            patch.object(
-                variant_service.file_storage, "delete_image_and_variants"
-            ) as mock_cleanup,
-            patch(
-                "src.image_processing_service.app.services.variant_generation.Modification.filter"
-            ) as mock_filter,
-        ):
-            mock_save.side_effect = [
-                "/path/to/variant1.jpg",
-                "/path/to/variant2.jpg",
-                Exception("Storage failed"),
-            ]
-
-            mock_delete = MagicMock()
-            mock_filter.return_value = mock_delete
-
-            with pytest.raises(IOError, match="Failed to generate variants"):
-                await variant_service.generate_variants(sample_image, mock_image_record)
-
-            mock_cleanup.assert_called_once()
-            mock_delete.delete.assert_called_once()
-
 
 class TestEdgeCases:
     @pytest.mark.asyncio

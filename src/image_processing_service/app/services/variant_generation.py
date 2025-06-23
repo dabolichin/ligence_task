@@ -51,7 +51,6 @@ class VariantGenerationService:
             return variants
 
         except Exception as e:
-            await self._cleanup_variants(image_record.id, len(variants))
             raise IOError(f"Failed to generate variants: {str(e)}")
 
     async def _generate_single_variant(
@@ -92,20 +91,6 @@ class VariantGenerationService:
             "num_modifications": num_modifications,
             "algorithm_type": AlgorithmType.XOR_TRANSFORM.value,
         }
-
-    async def _cleanup_variants(self, image_id: str, num_variants_created: int) -> None:
-        try:
-            # Delete any files that were created
-            await self.file_storage.delete_image_and_variants(image_id)
-
-            # Delete any database records that were created
-            await Modification.filter(image_id=image_id).delete()
-
-        except Exception as cleanup_error:
-            # Log cleanup error but don't raise to avoid masking original error
-            print(
-                f"Warning: Failed to cleanup variants for image {image_id}: {cleanup_error}"
-            )
 
     async def get_variant_count(self, image_id: str) -> int:
         count = await Modification.filter(image_id=image_id).count()
