@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
+from loguru import logger
 from tortoise.exceptions import DoesNotExist
 
 from ..models import Modification
@@ -17,6 +18,8 @@ async def get_modification_instructions(modification_id: UUID):
     """
     Get complete modification instructions for a specific variant.
     """
+    logger.info(f"Retrieving modification instructions for {modification_id}")
+
     try:
         modification = await Modification.get(id=modification_id).select_related(
             "image"
@@ -25,20 +28,21 @@ async def get_modification_instructions(modification_id: UUID):
         return ModificationInstructions(
             modification_id=modification.id,
             image_id=modification.image.id,
+            original_filename=modification.image.original_filename,
             variant_number=modification.variant_number,
             algorithm_type=modification.algorithm_type.value,
             instructions=modification.instructions,
             storage_path=modification.storage_path,
-            original_filename=modification.image.original_filename,
             created_at=modification.created_at,
         )
 
     except DoesNotExist:
+        logger.warning(f"Modification {modification_id} not found")
         raise HTTPException(
             status_code=404, detail=f"Modification {modification_id} not found"
         )
-    except Exception:
-        # Handle other database errors
+    except Exception as e:
+        logger.error(f"Error retrieving modification instructions: {e}")
         raise HTTPException(
             status_code=500,
             detail="Internal server error retrieving modification instructions",

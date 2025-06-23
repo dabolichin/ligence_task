@@ -2,6 +2,7 @@ import random
 from dataclasses import asdict
 from typing import Dict, List, Optional
 
+from loguru import logger
 from PIL import Image
 
 from ..core.config import get_settings
@@ -27,6 +28,8 @@ class VariantGenerationService:
         if image_record is None:
             raise ValueError("Image record cannot be None")
 
+        logger.info(f"Starting variant generation for image {image_record.id}")
+
         variants = []
         total_pixels = original_image.width * original_image.height
 
@@ -48,9 +51,15 @@ class VariantGenerationService:
                 )
                 variants.append(variant_info)
 
+            logger.info(
+                f"Generated {len(variants)} variants for image {image_record.id}"
+            )
             return variants
 
         except Exception as e:
+            logger.error(
+                f"Failed to generate variants for image {image_record.id}: {e}"
+            )
             raise IOError(f"Failed to generate variants: {str(e)}")
 
     async def _generate_single_variant(

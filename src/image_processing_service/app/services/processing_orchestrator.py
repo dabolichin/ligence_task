@@ -1,7 +1,8 @@
 import asyncio
-import logging
 import uuid
 from typing import Dict, List, Optional, Tuple
+
+from loguru import logger
 
 from ..core.config import get_settings
 from ..models import Image as ImageModel
@@ -16,7 +17,6 @@ class ProcessingOrchestrator:
         self.settings = get_settings()
         self.file_storage = FileStorageService()
         self.variant_generator = VariantGenerationService()
-        self.logger = logging.getLogger(__name__)
 
     async def start_image_processing(
         self, file_data: bytes, original_filename: str
@@ -24,7 +24,7 @@ class ProcessingOrchestrator:
         image_id = str(uuid.uuid4())
 
         try:
-            self.logger.info(
+            logger.info(
                 f"Starting image processing for {original_filename} (ID: {image_id})"
             )
 
@@ -59,7 +59,7 @@ class ProcessingOrchestrator:
         image_id = str(image_record.id)
 
         try:
-            self.logger.info(f"Starting variant generation for image {image_id}")
+            logger.info(f"Starting variant generation for image {image_id}")
 
             original_image = await self.file_storage.load_image(
                 image_record.storage_path
@@ -67,12 +67,12 @@ class ProcessingOrchestrator:
 
             await self.variant_generator.generate_variants(original_image, image_record)
 
-            self.logger.info(f"Successfully generated variants for image {image_id}")
+            logger.info(f"Successfully generated variants for image {image_id}")
 
             await self._notify_verification_service(image_id)
 
         except Exception as e:
-            self.logger.error(f"Failed to process variants for image {image_id}: {e}")
+            logger.error(f"Failed to process variants for image {image_id}: {e}")
 
             await self._cleanup_image_and_records(image_id, image_record)
 
@@ -88,12 +88,10 @@ class ProcessingOrchestrator:
                 await image_record.delete()
 
         except Exception as cleanup_error:
-            self.logger.warning(
-                f"Failed to cleanup for image {image_id}: {cleanup_error}"
-            )
+            logger.warning(f"Failed to cleanup for image {image_id}: {cleanup_error}")
 
     async def _notify_verification_service(self, image_id: str):
-        self.logger.info(f"TODO: Notify verification service for image {image_id}")
+        logger.info(f"TODO: Notify verification service for image {image_id}")
         pass
 
     async def get_processing_status(

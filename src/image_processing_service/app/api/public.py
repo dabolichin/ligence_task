@@ -1,8 +1,8 @@
-import logging
 from uuid import UUID
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from loguru import logger
 
 from ..models import Image as ImageModel
 from ..models import Modification
@@ -17,7 +17,6 @@ from ..services import ProcessingOrchestrator
 from ..services.file_storage import FileStorageService
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 file_storage = FileStorageService()
 orchestrator = ProcessingOrchestrator()
 
@@ -36,6 +35,8 @@ async def modify_image(file: UploadFile = File(...)):
     Raises:
         HTTPException: For invalid files or processing errors
     """
+    logger.info(f"Received image upload request: {file.filename}")
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
@@ -93,6 +94,8 @@ async def get_processing_status(processing_id: UUID):
     Raises:
         HTTPException: If processing ID not found
     """
+    logger.info(f"Getting processing status for {processing_id}")
+
     try:
         status_result = await orchestrator.get_processing_status(str(processing_id))
 
@@ -133,6 +136,8 @@ async def get_modification_details(modification_id: UUID):
     Raises:
         HTTPException: If image not found
     """
+    logger.info(f"Getting modification details for {modification_id}")
+
     try:
         image_with_variants = await orchestrator.get_modification_details(
             str(modification_id)
@@ -175,6 +180,8 @@ async def serve_original_image(image_id: UUID):
     Raises:
         HTTPException: If image not found or file missing
     """
+    logger.info(f"Serving original image for {image_id}")
+
     try:
         image_record = await ImageModel.get(id=str(image_id))
 
@@ -191,7 +198,9 @@ async def serve_original_image(image_id: UUID):
 
     except Exception as e:
         if "DoesNotExist" in str(type(e)):
+            logger.warning(f"Image {image_id} not found")
             raise HTTPException(status_code=404, detail=f"Image {image_id} not found")
+        logger.error(f"Error serving original image for {image_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -209,6 +218,8 @@ async def list_image_variants(image_id: UUID):
     Raises:
         HTTPException: If image not found
     """
+    logger.info(f"Listing variants for image {image_id}")
+
     try:
         modifications = await orchestrator.get_image_variants(str(image_id))
 
@@ -255,6 +266,8 @@ async def serve_variant_image(image_id: UUID, variant_id: UUID):
     Raises:
         HTTPException: If image or variant not found
     """
+    logger.info(f"Serving variant {variant_id} for image {image_id}")
+
     try:
         modification = await Modification.get(
             id=str(variant_id), image_id=str(image_id)
@@ -278,6 +291,7 @@ async def serve_variant_image(image_id: UUID, variant_id: UUID):
 
     except Exception as e:
         if "DoesNotExist" in str(type(e)):
+            logger.warning(f"Variant {variant_id} not found for image {image_id}")
             raise HTTPException(
                 status_code=404,
                 detail=f"Variant {variant_id} not found for image {image_id}",

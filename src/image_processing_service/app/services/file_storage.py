@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Tuple
 
 import aiofiles
+from loguru import logger
 from PIL import Image
 
 from ..core.config import get_settings
@@ -84,6 +85,8 @@ class FileStorageService:
         self, file_data: bytes, filename: str, image_id: str
     ) -> Tuple[str, dict]:
         temp_path = f"{self.settings.absolute_temp_dir}/{uuid.uuid4().hex}_temp"
+
+        logger.info(f"Saving original image: {filename} (ID: {image_id})")
 
         try:
             async with aiofiles.open(temp_path, "wb") as f:
