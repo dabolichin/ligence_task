@@ -2,7 +2,7 @@ import io
 import tempfile
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -287,3 +287,13 @@ async def setup_tortoise():
     await Tortoise.generate_schemas()
     yield
     await Tortoise.close_connections()
+
+
+@pytest.fixture(autouse=True)
+def mock_verification_service_calls():
+    """Automatically mock verification service HTTP calls for all tests."""
+    with patch(
+        "src.image_processing_service.app.services.variant_generation.VariantGenerationService._notify_verification_service"
+    ) as mock_notify:
+        mock_notify.return_value = None
+        yield mock_notify
