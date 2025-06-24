@@ -11,6 +11,7 @@ from ..core.config import Settings
 from ..models import Image as ImageModel
 from ..models import Modification
 from ..models.modification import AlgorithmType
+from ..schemas import VerificationRequest
 from .file_storage import FileStorageService
 
 
@@ -146,15 +147,15 @@ class VariantGenerationService:
         self, image_id: str, modification_id: str
     ) -> None:
         try:
-            verification_request = {
-                "image_id": image_id,
-                "modification_id": modification_id,
-            }
+            verification_request = VerificationRequest(
+                image_id=image_id,
+                modification_id=modification_id,
+            )
 
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.post(
                     f"{self.settings.VERIFICATION_SERVICE_URL}/internal/verify",
-                    json=verification_request,
+                    json=verification_request.model_dump(),
                 )
 
                 if response.status_code == 200:

@@ -2,16 +2,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from loguru import logger
-from pydantic import BaseModel
 
 from ..models.verification_result import VerificationResult, VerificationStatus
+from ..schemas import VerificationRequestData as VerificationRequest
 
 router = APIRouter()
-
-
-class VerificationRequest(BaseModel):
-    image_id: UUID
-    modification_id: UUID
 
 
 async def process_verification(image_id: UUID, modification_id: UUID):

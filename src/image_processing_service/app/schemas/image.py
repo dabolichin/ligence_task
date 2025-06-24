@@ -93,3 +93,10 @@ class ModificationInstructions(BaseModel):
     storage_path: str = Field(..., description="Path to modified image file")
     original_filename: str = Field(..., description="Original image filename")
     created_at: datetime = Field(..., description="When modification was created")
+
+
+class VerificationRequest(BaseModel):
+    """Schema for verification request sent to Verification Service."""
+
+    image_id: UUID = Field(..., description="Image identifier")
+    modification_id: UUID = Field(..., description="Modification identifier")

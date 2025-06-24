@@ -5,6 +5,7 @@ from .image import (
     ProcessingStatus,
     VariantInfo,
     VariantListResponse,
+    VerificationRequest,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "VariantInfo",
     "VariantListResponse",
     "ErrorResponse",
+    "VerificationRequest",
 ]
