@@ -146,7 +146,7 @@ class TestErrorHandling:
     def test_invalid_json_request(self, client):
         response = client.post(
             "/internal/verify",
-            data="invalid json",
+            content="invalid json",
             headers={"Content-Type": "application/json"},
         )
         assert response.status_code == 422

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from ..models import Image
 
@@ -19,8 +18,8 @@ class ProcessingResult:
     variants_completed: int
     total_variants: int
     created_at: datetime
-    completed_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    completed_at: datetime | None = None
+    error_message: str | None = None
 
     @property
     def is_complete(self) -> bool:
@@ -41,7 +40,7 @@ class ProcessingResult:
 class ProcessingRequest:
     file_data: bytes
     original_filename: str
-    content_type: Optional[str] = None
+    content_type: str | None = None
 
     @property
     def file_size_bytes(self) -> int:

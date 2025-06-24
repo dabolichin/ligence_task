@@ -1,5 +1,3 @@
-from typing import Dict
-
 from fastapi import APIRouter
 from loguru import logger
 
@@ -9,7 +7,7 @@ router = APIRouter()
 @router.get("/verification/{verification_id}/status")
 async def get_verification_status(
     verification_id: str,
-) -> Dict:
+) -> dict:
     """Get verification status for a specific verification ID."""
     logger.info(f"Getting verification status for ID: {verification_id}")
 
@@ -21,7 +19,7 @@ async def get_verification_status(
 
 
 @router.get("/verification/statistics")
-async def get_verification_statistics() -> Dict:
+async def get_verification_statistics() -> dict:
     """Get overall verification metrics and statistics."""
     logger.info("Getting verification statistics")
 
@@ -39,7 +37,7 @@ async def get_verification_statistics() -> Dict:
 async def get_verification_history(
     limit: int = 50,
     offset: int = 0,
-) -> Dict:
+) -> dict:
     """Get verification audit trail and history."""
     logger.info(f"Getting verification history with limit={limit}, offset={offset}")
 

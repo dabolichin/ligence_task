@@ -1,6 +1,6 @@
 import random
 from dataclasses import asdict
-from typing import Callable, Dict, List, Optional
+from typing import Callable
 
 import httpx
 from image_modification_algorithms import ModificationEngine
@@ -17,8 +17,8 @@ from .file_storage import FileStorageService
 class VariantGenerationService:
     def __init__(
         self,
-        file_storage: Optional[FileStorageService] = None,
-        modification_engine: Optional[ModificationEngine] = None,
+        file_storage: FileStorageService | None = None,
+        modification_engine: ModificationEngine | None = None,
         settings: Settings = None,
     ):
         from ..core.config import get_settings
@@ -31,8 +31,8 @@ class VariantGenerationService:
         self,
         original_image: Image.Image,
         image_record: ImageModel,
-        notification_callback: Optional[Callable[[str, str], None]] = None,
-    ) -> List[Dict]:
+        notification_callback: Callable[[str, str], None] | None = None,
+    ) -> list[dict]:
         if original_image is None:
             raise ValueError("Original image cannot be None")
 
@@ -85,7 +85,7 @@ class VariantGenerationService:
         variant_number: int,
         min_modifications: int,
         max_modifications: int,
-    ) -> Dict:
+    ) -> dict:
         num_modifications = random.randint(min_modifications, max_modifications)
 
         result = self.modification_engine.apply_modifications(
@@ -121,16 +121,14 @@ class VariantGenerationService:
         count = await Modification.filter(image_id=image_id).count()
         return count
 
-    async def get_modification_by_id(
-        self, modification_id: str
-    ) -> Optional[Modification]:
+    async def get_modification_by_id(self, modification_id: str) -> Modification | None:
         try:
             modification = await Modification.get(id=modification_id)
             return modification
         except Exception:
             return None
 
-    async def get_all_variants_for_image(self, image_id: str) -> List[Modification]:
+    async def get_all_variants_for_image(self, image_id: str) -> list[Modification]:
         modifications = await Modification.filter(image_id=image_id).order_by(
             "variant_number"
         )
@@ -138,7 +136,7 @@ class VariantGenerationService:
 
     async def get_variant_by_number(
         self, image_id: str, variant_number: int
-    ) -> Optional[Modification]:
+    ) -> Modification | None:
         modification = await Modification.filter(
             image_id=image_id, variant_number=variant_number
         ).first()

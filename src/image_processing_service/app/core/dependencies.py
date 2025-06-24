@@ -1,5 +1,3 @@
-from typing import Optional
-
 from image_modification_algorithms import ModificationEngine
 
 from ..core.config import get_settings
@@ -11,10 +9,10 @@ from ..services.variant_generation import VariantGenerationService
 class ServiceContainer:
     def __init__(self):
         self._settings = get_settings()
-        self._file_storage: Optional[FileStorageService] = None
-        self._modification_engine: Optional[ModificationEngine] = None
-        self._variant_generator: Optional[VariantGenerationService] = None
-        self._processing_orchestrator: Optional[ProcessingOrchestrator] = None
+        self._file_storage: FileStorageService | None = None
+        self._modification_engine: ModificationEngine | None = None
+        self._variant_generator: VariantGenerationService | None = None
+        self._processing_orchestrator: ProcessingOrchestrator | None = None
 
     @property
     def settings(self):

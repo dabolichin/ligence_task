@@ -1,5 +1,4 @@
 import uuid
-from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -14,8 +13,8 @@ from .variant_generation import VariantGenerationService
 class ProcessingOrchestrator:
     def __init__(
         self,
-        file_storage: Optional[FileStorageService] = None,
-        variant_generator: Optional[VariantGenerationService] = None,
+        file_storage: FileStorageService | None = None,
+        variant_generator: VariantGenerationService | None = None,
         settings: Settings = None,
     ):
         from ..core.config import get_settings
@@ -26,7 +25,7 @@ class ProcessingOrchestrator:
 
     async def start_image_processing(
         self, file_data: bytes, original_filename: str
-    ) -> Tuple[str, Dict]:
+    ) -> tuple[str, dict]:
         image_id = str(uuid.uuid4())
 
         try:
@@ -87,7 +86,7 @@ class ProcessingOrchestrator:
             await self._cleanup_image_and_records(image_id, image_record)
 
     async def _cleanup_image_and_records(
-        self, image_id: str, image_record: Optional[ImageModel] = None
+        self, image_id: str, image_record: ImageModel | None = None
     ):
         try:
             await self.file_storage.delete_image_and_variants(image_id)
@@ -102,7 +101,7 @@ class ProcessingOrchestrator:
 
     async def get_processing_status(
         self, processing_id: str
-    ) -> Optional[ProcessingResult]:
+    ) -> ProcessingResult | None:
         try:
             image_record = await ImageModel.get(id=processing_id)
 
@@ -132,9 +131,7 @@ class ProcessingOrchestrator:
         except Exception:
             return None
 
-    async def get_modification_details(
-        self, image_id: str
-    ) -> Optional[ImageWithVariants]:
+    async def get_modification_details(self, image_id: str) -> ImageWithVariants | None:
         try:
             image_record = await ImageModel.get(id=image_id)
             variants_count = await Modification.filter(image_id=image_id).count()
@@ -144,7 +141,7 @@ class ProcessingOrchestrator:
         except Exception:
             return None
 
-    async def get_image_variants(self, image_id: str) -> Optional[List[Modification]]:
+    async def get_image_variants(self, image_id: str) -> list[Modification] | None:
         try:
             await ImageModel.get(id=image_id)
 

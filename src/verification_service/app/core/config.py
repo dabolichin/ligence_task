@@ -1,6 +1,5 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import List
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -23,7 +22,7 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8002)
 
     # CORS Settings
-    ALLOWED_ORIGINS: List[str] = Field(
+    ALLOWED_ORIGINS: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:8000"]
     )
 
@@ -49,7 +48,7 @@ class Settings(BaseSettings):
 
     # Image Processing Settings (for verification)
     MAX_FILE_SIZE: int = Field(default=100 * 1024 * 1024)  # 100MB
-    ALLOWED_IMAGE_FORMATS: List[str] = Field(default=["jpeg", "png", "bmp"])
+    ALLOWED_IMAGE_FORMATS: list[str] = Field(default=["jpeg", "png", "bmp"])
 
     model_config = {
         "env_file": get_project_root() / ".env",

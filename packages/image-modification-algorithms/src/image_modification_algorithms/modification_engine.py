@@ -1,5 +1,3 @@
-from typing import Dict, Optional
-
 from PIL import Image
 
 from .types import (
@@ -12,7 +10,7 @@ from .xor_transform import XORTransformAlgorithm
 
 class ModificationEngine:
     def __init__(self):
-        self._algorithms: Dict[str, ModificationAlgorithm] = {
+        self._algorithms: dict[str, ModificationAlgorithm] = {
             "xor_transform": XORTransformAlgorithm(),
         }
 
@@ -24,7 +22,7 @@ class ModificationEngine:
         image: Image.Image,
         algorithm_name: str,
         num_modifications: int,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> ModificationResult:
         if algorithm_name not in self._algorithms:
             raise ValueError(f"Unknown algorithm: {algorithm_name}")

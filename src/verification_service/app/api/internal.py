@@ -1,4 +1,3 @@
-from typing import Dict
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
@@ -62,7 +61,7 @@ async def process_verification(image_id: UUID, modification_id: UUID):
 async def receive_verification_request(
     request: VerificationRequest,
     background_tasks: BackgroundTasks,
-) -> Dict:
+) -> dict:
     """Receive verification request from Image Processing Service."""
     logger.info(
         f"Received verification request for modification {request.modification_id}"

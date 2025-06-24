@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -32,10 +32,8 @@ class ProcessingStatus(BaseModel):
         default=100, description="Total number of variants to generate"
     )
     created_at: datetime = Field(..., description="When processing started")
-    completed_at: Optional[datetime] = Field(
-        None, description="When processing completed"
-    )
-    error_message: Optional[str] = Field(
+    completed_at: datetime | None = Field(None, description="When processing completed")
+    error_message: str | None = Field(
         None, description="Error message if status is failed"
     )
 
@@ -70,7 +68,7 @@ class VariantListResponse(BaseModel):
     """Response model for listing image variants"""
 
     image_id: UUID = Field(..., description="Image identifier")
-    variants: List[VariantInfo] = Field(..., description="List of all variants")
+    variants: list[VariantInfo] = Field(..., description="List of all variants")
     total_count: int = Field(..., description="Total number of variants")
 
 
@@ -79,7 +77,7 @@ class ErrorResponse(BaseModel):
 
     error: str = Field(..., description="Error type")
     message: str = Field(..., description="Error message")
-    details: Optional[str] = Field(None, description="Additional error details")
+    details: str | None = Field(None, description="Additional error details")
 
 
 class ModificationInstructions(BaseModel):
@@ -89,7 +87,7 @@ class ModificationInstructions(BaseModel):
     image_id: UUID = Field(..., description="Associated image identifier")
     variant_number: int = Field(..., description="Variant number (1-100)")
     algorithm_type: str = Field(..., description="Algorithm used for modification")
-    instructions: Dict[str, Any] = Field(
+    instructions: dict[str, Any] = Field(
         ..., description="Complete modification instructions"
     )
     storage_path: str = Field(..., description="Path to modified image file")

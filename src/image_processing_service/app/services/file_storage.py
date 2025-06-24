@@ -2,7 +2,6 @@ import asyncio
 import shutil
 import uuid
 from pathlib import Path
-from typing import Tuple
 
 import aiofiles
 from loguru import logger
@@ -28,7 +27,7 @@ class FileStorageService:
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
 
-    async def _extract_metadata(self, file_path: str) -> Tuple[str, dict]:
+    async def _extract_metadata(self, file_path: str) -> tuple[str, dict]:
         try:
 
             def _extract_format_and_metadata():
@@ -84,11 +83,11 @@ class FileStorageService:
             return f".{image_format.lower()}"
 
     async def save_original_image(
-        self, file_data: bytes, filename: str, image_id: str
-    ) -> Tuple[str, dict]:
+        self, file_data: bytes, original_filename: str, image_id: str
+    ) -> tuple[str, dict]:
         temp_path = f"{self.settings.absolute_temp_dir}/{uuid.uuid4().hex}_temp"
 
-        logger.info(f"Saving original image: {filename} (ID: {image_id})")
+        logger.info(f"Saving original image: {original_filename} (ID: {image_id})")
 
         try:
             async with aiofiles.open(temp_path, "wb") as f:

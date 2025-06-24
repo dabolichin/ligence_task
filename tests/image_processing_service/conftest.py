@@ -85,13 +85,13 @@ def mock_file_storage():
 def mock_xor_algorithm():
     """Create a mock XORTransformAlgorithm."""
     from dataclasses import dataclass
-    from typing import Any, Dict, List
+    from typing import Any
 
     @dataclass
     class MockInstructions:
         algorithm_type: str
         image_mode: str
-        operations: List[Dict[str, Any]]
+        operations: list[dict[str, Any]]
 
     @dataclass
     class MockModificationResult:
@@ -127,7 +127,7 @@ def mock_xor_algorithm():
 @pytest.fixture
 def mock_modification_engine():
     from dataclasses import dataclass
-    from typing import Any, Dict, List
+    from typing import Any
 
     from image_modification_algorithms import ModificationEngine
 
@@ -135,7 +135,7 @@ def mock_modification_engine():
     class MockInstructions:
         algorithm_type: str
         image_mode: str
-        operations: List[Dict[str, Any]]
+        operations: list[dict[str, Any]]
 
     @dataclass
     class MockModificationResult:
