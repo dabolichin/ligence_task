@@ -1,37 +1,17 @@
 import random
-from dataclasses import dataclass
 
 import numpy as np
 from PIL import Image
 
-
-@dataclass(frozen=True)
-class PixelOperation:
-    row: int
-    col: int
-    channel: int | None = None  # None for grayscale, 0-2 for RGB
-    parameter: int = 0  # Operation parameter (e.g., XOR key)
-
-    def to_tuple(self) -> tuple:
-        if self.channel is None:
-            return (self.row, self.col)
-        return (self.row, self.col, self.channel)
+from .types import (
+    Modification,
+    ModificationAlgorithm,
+    ModificationResult,
+    PixelOperation,
+)
 
 
-@dataclass(frozen=True)
-class Modification:
-    algorithm_type: str
-    image_mode: str
-    operations: list[PixelOperation]
-
-
-@dataclass(frozen=True)
-class ModificationResult:
-    modified_image: Image.Image
-    instructions: Modification
-
-
-class XORTransformAlgorithm:
+class XORTransformAlgorithm(ModificationAlgorithm):
     def __init__(self, seed: int | None = None):
         if seed is not None:
             self.rng = random.Random(seed)
@@ -97,6 +77,9 @@ class XORTransformAlgorithm:
         )
 
         return restored_image
+
+    def get_name(self) -> str:
+        return "xor_transform"
 
     def _generate_random_operations(
         self, height: int, width: int, channels: int, num_modifications: int

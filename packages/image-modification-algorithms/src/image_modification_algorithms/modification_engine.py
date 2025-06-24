@@ -1,20 +1,23 @@
-from typing import Optional
+from typing import Dict, Optional
 
 from PIL import Image
 
-from .xor_transform import (
+from .types import (
     Modification,
+    ModificationAlgorithm,
     ModificationResult,
-    XORTransformAlgorithm,
 )
+from .xor_transform import XORTransformAlgorithm
 
 
 class ModificationEngine:
     def __init__(self):
-        self._xor_algorithm = XORTransformAlgorithm()
+        self._algorithms: Dict[str, ModificationAlgorithm] = {
+            "xor_transform": XORTransformAlgorithm(),
+        }
 
     def get_available_algorithms(self) -> list[str]:
-        return ["xor_transform"]
+        return list(self._algorithms.keys())
 
     def apply_modifications(
         self,
@@ -23,17 +26,16 @@ class ModificationEngine:
         num_modifications: int,
         seed: Optional[int] = None,
     ) -> ModificationResult:
-        if algorithm_name not in self.get_available_algorithms():
+        if algorithm_name not in self._algorithms:
             raise ValueError(f"Unknown algorithm: {algorithm_name}")
 
-        if algorithm_name == "xor_transform":
-            if seed is not None:
-                algorithm = XORTransformAlgorithm(seed=seed)
-            else:
-                algorithm = self._xor_algorithm
-            return algorithm.apply_modifications(image, num_modifications)
+        # Create algorithm instance with seed if provided
+        if seed is not None and algorithm_name == "xor_transform":
+            algorithm = XORTransformAlgorithm(seed=seed)
+        else:
+            algorithm = self._algorithms[algorithm_name]
 
-        raise ValueError(f"Algorithm not implemented: {algorithm_name}")
+        return algorithm.apply_modifications(image, num_modifications)
 
     def reverse_modifications(
         self,
@@ -42,12 +44,16 @@ class ModificationEngine:
     ) -> Image.Image:
         algorithm_type = instructions.algorithm_type
 
+        if algorithm_type not in self._algorithms:
+            raise ValueError(f"Unknown algorithm type: {algorithm_type}")
+
+        # Use the algorithm class for reverse operations (static method)
         if algorithm_type == "xor_transform":
             return XORTransformAlgorithm.reverse_modifications(
                 modified_image, instructions
             )
 
-        raise ValueError(f"Unknown algorithm type: {algorithm_type}")
+        raise ValueError(f"Reverse operation not implemented for: {algorithm_type}")
 
 
 # Create a singleton instance for the service to use
