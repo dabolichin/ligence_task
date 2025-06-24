@@ -81,6 +81,9 @@ class XORTransformAlgorithm(ModificationAlgorithm):
     def get_name(self) -> str:
         return "xor_transform"
 
+    def get_operation_class(self) -> type[PixelOperation]:
+        return PixelOperation
+
     def _generate_random_operations(
         self, height: int, width: int, channels: int, num_modifications: int
     ) -> list[PixelOperation]:

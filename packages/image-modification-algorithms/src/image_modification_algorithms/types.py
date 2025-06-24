@@ -79,3 +79,8 @@ class ModificationAlgorithm(Protocol):
     def get_name(self) -> str:
         """Get the algorithm name identifier."""
         ...
+
+    @abstractmethod
+    def get_operation_class(self) -> type[SerializableOperation]:
+        """Get the operation class used by this algorithm."""
+        ...
