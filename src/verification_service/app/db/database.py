@@ -15,7 +15,7 @@ async def init_db():
 
         await Tortoise.init(
             db_url=database_url,
-            modules={"models": []},
+            modules={"models": ["app.models"]},
         )
 
         # Generate database schema
