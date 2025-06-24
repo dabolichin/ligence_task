@@ -1,13 +1,12 @@
 import numpy as np
 import pytest
-from PIL import Image
-
-from src.image_processing_service.app.services.algorithms.xor_transform import (
+from image_modification_algorithms import (
     Modification,
     ModificationResult,
     PixelOperation,
     XORTransformAlgorithm,
 )
+from PIL import Image
 
 
 class TestXORTransformAlgorithm:

@@ -21,6 +21,7 @@ dependencies = [
     "loguru>=0.7.0",
     "tortoise-orm>=0.25.1",
     "aiofiles>=24.1.0",
+    "image-modification-algorithms",
 ]
 
 [dependency-groups]
@@ -41,6 +42,12 @@ lint = [
 
 [tool.uv]
 default-groups = "all"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+image-modification-algorithms = { workspace = true }
 
 # Poe Tasks
 [tool.poe.tasks]
@@ -71,7 +78,7 @@ test-verbose = "uv run pytest -v"
 # Tool Configuration
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests"]
+testpaths = ["tests", "packages/*/tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

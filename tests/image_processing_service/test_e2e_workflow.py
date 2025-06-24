@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from image_modification_algorithms import ModificationEngine
 from PIL import Image
 
 from src.image_processing_service.app.api.internal import router as internal_router
@@ -16,9 +17,6 @@ from src.image_processing_service.app.core.dependencies import (
     get_variant_generator,
 )
 from src.image_processing_service.app.models import Image as ImageModel
-from src.image_processing_service.app.services.algorithms.xor_transform import (
-    XORTransformAlgorithm,
-)
 from src.image_processing_service.app.services.file_storage import FileStorageService
 from src.image_processing_service.app.services.processing_orchestrator import (
     ProcessingOrchestrator,
@@ -77,7 +75,7 @@ class RealImageFixtures:
 
 class TestCompleteServiceWorkflow:
     @pytest.fixture
-    def integration_client(self, temp_storage_dir):
+    def integration_client(self, temp_storage_dir, mock_xor_algorithm):
         mock_settings = MagicMock()
         mock_settings.absolute_original_images_dir = str(
             Path(temp_storage_dir) / "original"
@@ -92,10 +90,10 @@ class TestCompleteServiceWorkflow:
 
         # Create services with mock settings
         file_storage = FileStorageService(mock_settings)
-        xor_algorithm = XORTransformAlgorithm()
+        modification_engine = ModificationEngine()
         variant_generator = VariantGenerationService(
             file_storage=file_storage,
-            xor_algorithm=xor_algorithm,
+            modification_engine=modification_engine,
             settings=mock_settings,
         )
         processing_orchestrator = ProcessingOrchestrator(
@@ -107,7 +105,7 @@ class TestCompleteServiceWorkflow:
         # Create container and inject services
         container = ServiceContainer()
         container.set_file_storage(file_storage)
-        container.set_xor_algorithm(xor_algorithm)
+        container.set_xor_algorithm(mock_xor_algorithm)
         container.set_variant_generator(variant_generator)
         container.set_processing_orchestrator(processing_orchestrator)
 

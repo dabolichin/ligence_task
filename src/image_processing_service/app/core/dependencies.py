@@ -1,7 +1,8 @@
 from typing import Optional
 
+from image_modification_algorithms import ModificationEngine
+
 from ..core.config import get_settings
-from ..services.algorithms.xor_transform import XORTransformAlgorithm
 from ..services.file_storage import FileStorageService
 from ..services.processing_orchestrator import ProcessingOrchestrator
 from ..services.variant_generation import VariantGenerationService
@@ -11,7 +12,7 @@ class ServiceContainer:
     def __init__(self):
         self._settings = get_settings()
         self._file_storage: Optional[FileStorageService] = None
-        self._xor_algorithm: Optional[XORTransformAlgorithm] = None
+        self._modification_engine: Optional[ModificationEngine] = None
         self._variant_generator: Optional[VariantGenerationService] = None
         self._processing_orchestrator: Optional[ProcessingOrchestrator] = None
 
@@ -26,17 +27,17 @@ class ServiceContainer:
         return self._file_storage
 
     @property
-    def xor_algorithm(self) -> XORTransformAlgorithm:
-        if self._xor_algorithm is None:
-            self._xor_algorithm = XORTransformAlgorithm()
-        return self._xor_algorithm
+    def modification_engine(self) -> ModificationEngine:
+        if self._modification_engine is None:
+            self._modification_engine = ModificationEngine()
+        return self._modification_engine
 
     @property
     def variant_generator(self) -> VariantGenerationService:
         if self._variant_generator is None:
             self._variant_generator = VariantGenerationService(
                 file_storage=self.file_storage,
-                xor_algorithm=self.xor_algorithm,
+                modification_engine=self.modification_engine,
                 settings=self._settings,
             )
         return self._variant_generator
@@ -57,8 +58,8 @@ class ServiceContainer:
         self._variant_generator = None
         self._processing_orchestrator = None
 
-    def set_xor_algorithm(self, xor_algorithm: XORTransformAlgorithm) -> None:
-        self._xor_algorithm = xor_algorithm
+    def set_modification_engine(self, modification_engine: ModificationEngine) -> None:
+        self._modification_engine = modification_engine
         # Clear dependent services so they get recreated with new dependency
         self._variant_generator = None
         self._processing_orchestrator = None
@@ -75,9 +76,14 @@ class ServiceContainer:
     ) -> None:
         self._processing_orchestrator = processing_orchestrator
 
+    def set_xor_algorithm(self, xor_algorithm) -> None:
+        custom_engine = ModificationEngine()
+        custom_engine._xor_algorithm = xor_algorithm
+        self.set_modification_engine(custom_engine)
+
     def reset(self):
         self._file_storage = None
-        self._xor_algorithm = None
+        self._modification_engine = None
         self._variant_generator = None
         self._processing_orchestrator = None
 

@@ -2,6 +2,7 @@ import random
 from dataclasses import asdict
 from typing import Dict, List, Optional
 
+from image_modification_algorithms import ModificationEngine
 from loguru import logger
 from PIL import Image
 
@@ -9,7 +10,6 @@ from ..core.config import Settings
 from ..models import Image as ImageModel
 from ..models import Modification
 from ..models.modification import AlgorithmType
-from .algorithms.xor_transform import XORTransformAlgorithm
 from .file_storage import FileStorageService
 
 
@@ -17,14 +17,14 @@ class VariantGenerationService:
     def __init__(
         self,
         file_storage: Optional[FileStorageService] = None,
-        xor_algorithm: Optional[XORTransformAlgorithm] = None,
+        modification_engine: Optional[ModificationEngine] = None,
         settings: Settings = None,
     ):
         from ..core.config import get_settings
 
         self.settings = settings or get_settings()
         self.file_storage = file_storage or FileStorageService()
-        self.xor_algorithm = xor_algorithm or XORTransformAlgorithm()
+        self.modification_engine = modification_engine or ModificationEngine()
 
     async def generate_variants(
         self, original_image: Image.Image, image_record: ImageModel
@@ -79,14 +79,14 @@ class VariantGenerationService:
     ) -> Dict:
         num_modifications = random.randint(min_modifications, max_modifications)
 
-        modification_result = self.xor_algorithm.apply_modifications(
-            original_image, num_modifications
+        result = self.modification_engine.apply_modifications(
+            original_image, "xor_transform", num_modifications
         )
 
         extension = self.file_storage.extension_from_format(image_record.format)
 
         storage_path = await self.file_storage.save_variant_image(
-            image=modification_result.modified_image,
+            image=result.modified_image,
             image_id=str(image_record.id),
             variant_number=variant_number,
             extension=extension,
@@ -96,7 +96,7 @@ class VariantGenerationService:
             image_id=image_record.id,
             algorithm_type=AlgorithmType.XOR_TRANSFORM,
             variant_number=variant_number,
-            instructions=asdict(modification_result.instructions),
+            instructions=asdict(result.instructions),
             storage_path=storage_path,
         )
 

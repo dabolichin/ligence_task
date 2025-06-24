@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from image_modification_algorithms import XORTransformAlgorithm
 from PIL import Image
 from tortoise import Tortoise
 
@@ -21,9 +22,6 @@ from src.image_processing_service.app.core.dependencies import (
     restore_container,
 )
 from src.image_processing_service.app.models import Image as ImageModel
-from src.image_processing_service.app.services.algorithms.xor_transform import (
-    XORTransformAlgorithm,
-)
 from src.image_processing_service.app.services.file_storage import FileStorageService
 from src.image_processing_service.app.services.processing_orchestrator import (
     ProcessingOrchestrator,
@@ -127,6 +125,56 @@ def mock_xor_algorithm():
 
 
 @pytest.fixture
+def mock_modification_engine():
+    from dataclasses import dataclass
+    from typing import Any, Dict, List
+
+    from image_modification_algorithms import ModificationEngine
+
+    @dataclass
+    class MockInstructions:
+        algorithm_type: str
+        image_mode: str
+        operations: List[Dict[str, Any]]
+
+    @dataclass
+    class MockModificationResult:
+        modified_image: Any
+        instructions: MockInstructions
+
+    def mock_apply_modifications(image, algorithm_name, num_modifications, seed=None):
+        image_mode = image.mode
+
+        if image_mode == "RGB":
+            operations = [{"row": 0, "col": 0, "channel": 0, "parameter": 128}]
+        else:
+            operations = [{"row": 0, "col": 0, "parameter": 128}]
+
+        instructions = MockInstructions(
+            algorithm_type="xor_transform", image_mode=image_mode, operations=operations
+        )
+
+        modified_image = Image.new(image_mode, image.size)
+
+        return MockModificationResult(
+            modified_image=modified_image, instructions=instructions
+        )
+
+    mock = Mock(spec=ModificationEngine)
+    mock.get_available_algorithms = Mock(return_value=["xor_transform"])
+    mock.apply_modifications = Mock(side_effect=mock_apply_modifications)
+    mock.reverse_modifications = Mock(return_value=Image.new("RGB", (100, 100)))
+    mock.get_algorithm_info = Mock(
+        return_value={
+            "name": "xor_transform",
+            "description": "XOR Transform algorithm",
+            "supports_seeding": True,
+        }
+    )
+    return mock
+
+
+@pytest.fixture
 def mock_variant_generator():
     mock = Mock(spec=VariantGenerationService)
     mock.generate_variants = AsyncMock(return_value=[])
@@ -174,9 +222,9 @@ def grayscale_image():
 
 
 @pytest.fixture
-def variant_service(test_container, mock_file_storage, mock_xor_algorithm):
+def variant_service(test_container, mock_file_storage, mock_modification_engine):
     test_container.set_file_storage(mock_file_storage)
-    test_container.set_xor_algorithm(mock_xor_algorithm)
+    test_container.set_modification_engine(mock_modification_engine)
     return test_container.variant_generator
 
 

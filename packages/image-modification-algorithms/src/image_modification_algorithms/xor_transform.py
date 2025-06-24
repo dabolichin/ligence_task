@@ -1,6 +1,5 @@
 import random
 from dataclasses import dataclass
-from typing import List, Optional
 
 import numpy as np
 from PIL import Image
@@ -10,7 +9,7 @@ from PIL import Image
 class PixelOperation:
     row: int
     col: int
-    channel: Optional[int] = None  # None for grayscale, 0-2 for RGB
+    channel: int | None = None  # None for grayscale, 0-2 for RGB
     parameter: int = 0  # Operation parameter (e.g., XOR key)
 
     def to_tuple(self) -> tuple:
@@ -23,7 +22,7 @@ class PixelOperation:
 class Modification:
     algorithm_type: str
     image_mode: str
-    operations: List[PixelOperation]
+    operations: list[PixelOperation]
 
 
 @dataclass(frozen=True)
@@ -33,7 +32,7 @@ class ModificationResult:
 
 
 class XORTransformAlgorithm:
-    def __init__(self, seed: Optional[int] = None):
+    def __init__(self, seed: int | None = None):
         if seed is not None:
             self.rng = random.Random(seed)
         else:
@@ -101,7 +100,7 @@ class XORTransformAlgorithm:
 
     def _generate_random_operations(
         self, height: int, width: int, channels: int, num_modifications: int
-    ) -> List[PixelOperation]:
+    ) -> list[PixelOperation]:
         operations = []
 
         for _ in range(num_modifications):
@@ -119,7 +118,7 @@ class XORTransformAlgorithm:
 
     @staticmethod
     def _apply_xor_modifications(
-        image: np.ndarray, operations: List[PixelOperation]
+        image: np.ndarray, operations: list[PixelOperation]
     ) -> np.ndarray:
         result = image.copy()
 

@@ -16,7 +16,7 @@ class TestInstructionStorage:
         self,
         test_container,
         mock_file_storage,
-        mock_xor_algorithm,
+        mock_modification_engine,
         request,
         mock_image_record,
         image_fixture,
@@ -36,7 +36,7 @@ class TestInstructionStorage:
         mock_file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
 
         test_container.set_file_storage(mock_file_storage)
-        test_container.set_xor_algorithm(mock_xor_algorithm)
+        test_container.set_modification_engine(mock_modification_engine)
         variant_service = test_container.variant_generator
 
         with patch(
