@@ -1,5 +1,6 @@
 from typing import Optional
 
+from ..core.config import get_settings
 from ..services.algorithms.xor_transform import XORTransformAlgorithm
 from ..services.file_storage import FileStorageService
 from ..services.processing_orchestrator import ProcessingOrchestrator
@@ -8,34 +9,45 @@ from ..services.variant_generation import VariantGenerationService
 
 class ServiceContainer:
     def __init__(self):
+        self._settings = get_settings()
         self._file_storage: Optional[FileStorageService] = None
         self._xor_algorithm: Optional[XORTransformAlgorithm] = None
         self._variant_generator: Optional[VariantGenerationService] = None
         self._processing_orchestrator: Optional[ProcessingOrchestrator] = None
 
-    def get_file_storage(self) -> FileStorageService:
+    @property
+    def settings(self):
+        return self._settings
+
+    @property
+    def file_storage(self) -> FileStorageService:
         if self._file_storage is None:
-            self._file_storage = FileStorageService()
+            self._file_storage = FileStorageService(self._settings)
         return self._file_storage
 
-    def get_xor_algorithm(self) -> XORTransformAlgorithm:
+    @property
+    def xor_algorithm(self) -> XORTransformAlgorithm:
         if self._xor_algorithm is None:
             self._xor_algorithm = XORTransformAlgorithm()
         return self._xor_algorithm
 
-    def get_variant_generator(self) -> VariantGenerationService:
+    @property
+    def variant_generator(self) -> VariantGenerationService:
         if self._variant_generator is None:
             self._variant_generator = VariantGenerationService(
-                file_storage=self.get_file_storage(),
-                xor_algorithm=self.get_xor_algorithm(),
+                file_storage=self.file_storage,
+                xor_algorithm=self.xor_algorithm,
+                settings=self._settings,
             )
         return self._variant_generator
 
-    def get_processing_orchestrator(self) -> ProcessingOrchestrator:
+    @property
+    def processing_orchestrator(self) -> ProcessingOrchestrator:
         if self._processing_orchestrator is None:
             self._processing_orchestrator = ProcessingOrchestrator(
-                file_storage=self.get_file_storage(),
-                variant_generator=self.get_variant_generator(),
+                file_storage=self.file_storage,
+                variant_generator=self.variant_generator,
+                settings=self._settings,
             )
         return self._processing_orchestrator
 
@@ -74,16 +86,20 @@ class ServiceContainer:
 _container = ServiceContainer()
 
 
+def get_settings_dependency():
+    return get_settings()
+
+
 def get_file_storage() -> FileStorageService:
-    return _container.get_file_storage()
+    return _container.file_storage
 
 
 def get_variant_generator() -> VariantGenerationService:
-    return _container.get_variant_generator()
+    return _container.variant_generator
 
 
 def get_processing_orchestrator() -> ProcessingOrchestrator:
-    return _container.get_processing_orchestrator()
+    return _container.processing_orchestrator
 
 
 def get_test_container() -> ServiceContainer:

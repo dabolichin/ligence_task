@@ -36,7 +36,7 @@ class TestProcessingOrchestrator:
 
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         with patch.object(ImageModel, "create") as mock_create:
             mock_create.return_value = mock_image_record
@@ -75,7 +75,7 @@ class TestProcessingOrchestrator:
 
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         with pytest.raises(ValueError, match="Invalid image file"):
             await orchestrator.start_image_processing(invalid_data, filename)
@@ -94,7 +94,7 @@ class TestProcessingOrchestrator:
 
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         with pytest.raises(IOError, match="Disk full"):
             await orchestrator.start_image_processing(sample_image_data, filename)
@@ -122,7 +122,7 @@ class TestProcessingOrchestrator:
 
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         with (
             patch.object(ImageModel, "create") as mock_create,
@@ -155,7 +155,7 @@ class TestProcessingOrchestrator:
 
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         async def mock_get_func(id):
             mock_record = MagicMock()
@@ -191,7 +191,7 @@ class TestProcessingOrchestrator:
 
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         async def mock_get_func(id):
             mock_record = MagicMock()
@@ -225,7 +225,7 @@ class TestProcessingOrchestrator:
     ):
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         with patch.object(ImageModel, "get") as mock_get:
             from tortoise.exceptions import DoesNotExist
@@ -241,7 +241,7 @@ class TestProcessingOrchestrator:
     ):
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         invalid_data = b"not an image"
         filename = "invalid.jpg"
@@ -281,7 +281,7 @@ class TestProcessingOrchestrator:
 
         test_container.set_file_storage(mock_file_storage)
         test_container.set_variant_generator(mock_variant_generator)
-        orchestrator = test_container.get_processing_orchestrator()
+        orchestrator = test_container.processing_orchestrator
 
         with (
             patch.object(ImageModel, "create") as mock_create,

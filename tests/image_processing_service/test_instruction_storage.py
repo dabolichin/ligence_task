@@ -37,7 +37,7 @@ class TestInstructionStorage:
 
         test_container.set_file_storage(mock_file_storage)
         test_container.set_xor_algorithm(mock_xor_algorithm)
-        variant_service = test_container.get_variant_generator()
+        variant_service = test_container.variant_generator
 
         with patch(
             "src.image_processing_service.app.services.variant_generation.Modification.create",

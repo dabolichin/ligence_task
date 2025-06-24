@@ -8,12 +8,14 @@ import aiofiles
 from loguru import logger
 from PIL import Image
 
-from ..core.config import get_settings
+from ..core.config import Settings
 
 
 class FileStorageService:
-    def __init__(self):
-        self.settings = get_settings()
+    def __init__(self, settings: Settings = None):
+        from ..core.config import get_settings
+
+        self.settings = settings or get_settings()
         self._ensure_directories()
 
     def _ensure_directories(self) -> None:

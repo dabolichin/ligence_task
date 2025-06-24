@@ -2,7 +2,7 @@ import io
 import tempfile
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 from fastapi import FastAPI
@@ -128,7 +128,6 @@ def mock_xor_algorithm():
 
 @pytest.fixture
 def mock_variant_generator():
-    """Create a mock VariantGenerationService."""
     mock = Mock(spec=VariantGenerationService)
     mock.generate_variants = AsyncMock(return_value=[])
     return mock
@@ -136,7 +135,6 @@ def mock_variant_generator():
 
 @pytest.fixture
 def mock_processing_orchestrator():
-    """Create a mock ProcessingOrchestrator."""
     mock = Mock(spec=ProcessingOrchestrator)
     mock.start_image_processing = AsyncMock(
         return_value=("image_id", {"message": "success"})
@@ -177,10 +175,9 @@ def grayscale_image():
 
 @pytest.fixture
 def variant_service(test_container, mock_file_storage, mock_xor_algorithm):
-    """Create a VariantGenerationService using dependency injection."""
     test_container.set_file_storage(mock_file_storage)
     test_container.set_xor_algorithm(mock_xor_algorithm)
-    return test_container.get_variant_generator()
+    return test_container.variant_generator
 
 
 @pytest.fixture
@@ -193,18 +190,15 @@ def sample_image_bytes():
 
 @pytest.fixture
 def test_client(test_container):
-    """Create a test client with dependency injection."""
     app = FastAPI()
 
     # Override FastAPI dependencies with test container services
-    app.dependency_overrides[get_file_storage] = (
-        lambda: test_container.get_file_storage()
-    )
+    app.dependency_overrides[get_file_storage] = lambda: test_container.file_storage
     app.dependency_overrides[get_variant_generator] = (
-        lambda: test_container.get_variant_generator()
+        lambda: test_container.variant_generator
     )
     app.dependency_overrides[get_processing_orchestrator] = (
-        lambda: test_container.get_processing_orchestrator()
+        lambda: test_container.processing_orchestrator
     )
 
     app.include_router(public_router, prefix="/api")
@@ -219,22 +213,16 @@ def test_client(test_container):
 
 @pytest.fixture
 def file_storage_service(test_container, mock_settings):
-    """Create a FileStorageService using dependency injection."""
-    with patch(
-        "src.image_processing_service.app.services.file_storage.get_settings",
-        return_value=mock_settings,
-    ):
-        file_storage = FileStorageService()
-        test_container.set_file_storage(file_storage)
-        return file_storage
+    file_storage = FileStorageService(settings=mock_settings)
+    test_container.set_file_storage(file_storage)
+    return file_storage
 
 
 @pytest.fixture
 def processing_orchestrator(test_container, mock_file_storage, mock_variant_generator):
-    """Create a ProcessingOrchestrator using dependency injection."""
     test_container.set_file_storage(mock_file_storage)
     test_container.set_variant_generator(mock_variant_generator)
-    return test_container.get_processing_orchestrator()
+    return test_container.processing_orchestrator
 
 
 @pytest.fixture(scope="session", autouse=True)

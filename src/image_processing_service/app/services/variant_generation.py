@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 from PIL import Image
 
-from ..core.config import get_settings
+from ..core.config import Settings
 from ..models import Image as ImageModel
 from ..models import Modification
 from ..models.modification import AlgorithmType
@@ -18,8 +18,11 @@ class VariantGenerationService:
         self,
         file_storage: Optional[FileStorageService] = None,
         xor_algorithm: Optional[XORTransformAlgorithm] = None,
+        settings: Settings = None,
     ):
-        self.settings = get_settings()
+        from ..core.config import get_settings
+
+        self.settings = settings or get_settings()
         self.file_storage = file_storage or FileStorageService()
         self.xor_algorithm = xor_algorithm or XORTransformAlgorithm()
 

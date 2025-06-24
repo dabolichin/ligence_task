@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 
-from ..core.config import get_settings
+from ..core.config import Settings
 from ..models import Image as ImageModel
 from ..models import Modification
 from .domain import ImageWithVariants, ProcessingResult
@@ -16,8 +16,11 @@ class ProcessingOrchestrator:
         self,
         file_storage: Optional[FileStorageService] = None,
         variant_generator: Optional[VariantGenerationService] = None,
+        settings: Settings = None,
     ):
-        self.settings = get_settings()
+        from ..core.config import get_settings
+
+        self.settings = settings or get_settings()
         self.file_storage = file_storage or FileStorageService()
         self.variant_generator = variant_generator or VariantGenerationService()
 
@@ -58,7 +61,6 @@ class ProcessingOrchestrator:
             raise
 
     async def process_variants_background(self, image_id: str):
-        """Public method for FastAPI BackgroundTasks to process variants."""
         try:
             image_record = await ImageModel.get(id=image_id)
             await self._generate_variants_background(image_record)

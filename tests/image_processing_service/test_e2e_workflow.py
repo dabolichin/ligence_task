@@ -1,7 +1,7 @@
 import io
 import uuid
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,7 +16,16 @@ from src.image_processing_service.app.core.dependencies import (
     get_variant_generator,
 )
 from src.image_processing_service.app.models import Image as ImageModel
+from src.image_processing_service.app.services.algorithms.xor_transform import (
+    XORTransformAlgorithm,
+)
 from src.image_processing_service.app.services.file_storage import FileStorageService
+from src.image_processing_service.app.services.processing_orchestrator import (
+    ProcessingOrchestrator,
+)
+from src.image_processing_service.app.services.variant_generation import (
+    VariantGenerationService,
+)
 
 
 class RealImageFixtures:
@@ -81,42 +90,42 @@ class TestCompleteServiceWorkflow:
         mock_settings.VARIANTS_COUNT = 100
         mock_settings.MIN_MODIFICATIONS_PER_VARIANT = 100
 
+        # Create services with mock settings
+        file_storage = FileStorageService(mock_settings)
+        xor_algorithm = XORTransformAlgorithm()
+        variant_generator = VariantGenerationService(
+            file_storage=file_storage,
+            xor_algorithm=xor_algorithm,
+            settings=mock_settings,
+        )
+        processing_orchestrator = ProcessingOrchestrator(
+            file_storage=file_storage,
+            variant_generator=variant_generator,
+            settings=mock_settings,
+        )
+
+        # Create container and inject services
         container = ServiceContainer()
+        container.set_file_storage(file_storage)
+        container.set_xor_algorithm(xor_algorithm)
+        container.set_variant_generator(variant_generator)
+        container.set_processing_orchestrator(processing_orchestrator)
 
-        with (
-            patch(
-                "src.image_processing_service.app.services.file_storage.get_settings",
-                return_value=mock_settings,
-            ),
-            patch(
-                "src.image_processing_service.app.services.variant_generation.get_settings",
-                return_value=mock_settings,
-            ),
-            patch(
-                "src.image_processing_service.app.services.processing_orchestrator.get_settings",
-                return_value=mock_settings,
-            ),
-        ):
-            file_storage = FileStorageService()
-            container.set_file_storage(file_storage)
+        from fastapi import FastAPI
 
-            from fastapi import FastAPI
+        test_app = FastAPI()
+        test_app.include_router(public_router, prefix="/api")
+        test_app.include_router(internal_router, prefix="/internal")
 
-            test_app = FastAPI()
-            test_app.include_router(public_router, prefix="/api")
-            test_app.include_router(internal_router, prefix="/internal")
+        test_app.dependency_overrides[get_file_storage] = lambda: container.file_storage
+        test_app.dependency_overrides[get_variant_generator] = (
+            lambda: container.variant_generator
+        )
+        test_app.dependency_overrides[get_processing_orchestrator] = (
+            lambda: container.processing_orchestrator
+        )
 
-            test_app.dependency_overrides[get_file_storage] = (
-                lambda: container.get_file_storage()
-            )
-            test_app.dependency_overrides[get_variant_generator] = (
-                lambda: container.get_variant_generator()
-            )
-            test_app.dependency_overrides[get_processing_orchestrator] = (
-                lambda: container.get_processing_orchestrator()
-            )
-
-            yield TestClient(test_app), container
+        yield TestClient(test_app), container
 
     @pytest.fixture
     def sample_image_data(self):
@@ -271,9 +280,9 @@ class TestCompleteServiceWorkflow:
     ):
         client, container = integration_client
 
-        file_storage = container.get_file_storage()
-        variant_generator = container.get_variant_generator()
-        processing_orchestrator = container.get_processing_orchestrator()
+        file_storage = container.file_storage
+        variant_generator = container.variant_generator
+        processing_orchestrator = container.processing_orchestrator
 
         assert variant_generator.file_storage is file_storage
         assert processing_orchestrator.file_storage is file_storage

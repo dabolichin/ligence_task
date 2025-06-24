@@ -48,21 +48,15 @@ class TestSimpleServiceIntegration:
 
         container = ServiceContainer()
 
-        with patch(
-            "src.image_processing_service.app.services.file_storage.get_settings",
-            return_value=mock_settings,
-        ):
-            file_storage = FileStorageService()
-            container.set_file_storage(file_storage)
+        file_storage = FileStorageService(settings=mock_settings)
+        container.set_file_storage(file_storage)
 
-        app.dependency_overrides[get_file_storage] = (
-            lambda: container.get_file_storage()
-        )
+        app.dependency_overrides[get_file_storage] = lambda: container.file_storage
         app.dependency_overrides[get_variant_generator] = (
-            lambda: container.get_variant_generator()
+            lambda: container.variant_generator
         )
         app.dependency_overrides[get_processing_orchestrator] = (
-            lambda: container.get_processing_orchestrator()
+            lambda: container.processing_orchestrator
         )
 
         return TestClient(app), container
@@ -77,9 +71,9 @@ class TestSimpleServiceIntegration:
     def test_service_container_integration(self, test_app):
         client, container = test_app
 
-        file_storage = container.get_file_storage()
-        variant_generator = container.get_variant_generator()
-        processing_orchestrator = container.get_processing_orchestrator()
+        file_storage = container.file_storage
+        variant_generator = container.variant_generator
+        processing_orchestrator = container.processing_orchestrator
 
         assert variant_generator.file_storage is file_storage
         assert processing_orchestrator.file_storage is file_storage
@@ -106,7 +100,7 @@ class TestSimpleServiceIntegration:
     async def test_file_storage_integration(self, test_app, sample_image_data):
         client, container = test_app
 
-        file_storage = container.get_file_storage()
+        file_storage = container.file_storage
 
         image_id = str(uuid.uuid4())
         storage_path, metadata = await file_storage.save_original_image(
@@ -136,7 +130,7 @@ class TestSimpleServiceIntegration:
         mock_image_record.id = str(uuid.uuid4())
         mock_image_record.format = "JPEG"
 
-        variant_generator = container.get_variant_generator()
+        variant_generator = container.variant_generator
 
         with patch(
             "src.image_processing_service.app.services.variant_generation.Modification.create"
@@ -161,8 +155,8 @@ class TestSimpleServiceIntegration:
     def test_processing_orchestrator_integration(self, test_app, sample_image_data):
         client, container = test_app
 
-        file_storage = container.get_file_storage()
-        orchestrator = container.get_processing_orchestrator()
+        file_storage = container.file_storage
+        orchestrator = container.processing_orchestrator
 
         assert orchestrator.file_storage is file_storage
         assert orchestrator.variant_generator is not None
@@ -171,7 +165,7 @@ class TestSimpleServiceIntegration:
     def test_service_error_handling_integration(self, test_app):
         client, container = test_app
 
-        file_storage = container.get_file_storage()
+        file_storage = container.file_storage
 
         import tempfile
 
@@ -219,9 +213,9 @@ class TestSimpleServiceIntegration:
         custom_file_storage = MagicMock()
         container.set_file_storage(custom_file_storage)
 
-        assert container.get_file_storage() is custom_file_storage
+        assert container.file_storage is custom_file_storage
 
-        variant_generator = container.get_variant_generator()
+        variant_generator = container.variant_generator
         assert variant_generator.file_storage is custom_file_storage
 
     @pytest.mark.asyncio
@@ -229,7 +223,7 @@ class TestSimpleServiceIntegration:
         import asyncio
 
         client, container = test_app
-        file_storage = container.get_file_storage()
+        file_storage = container.file_storage
 
         tasks = []
         for i in range(3):
