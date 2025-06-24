@@ -1,12 +1,24 @@
 from unittest.mock import Mock
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from image_modification_algorithms.types import (
     ModificationAlgorithm,
     PixelOperation,
 )
 
-from src.verification_service.app.services.instruction_parser import InstructionParser
+from src.verification_service.app.api import internal, public
+from src.verification_service.app.core.dependencies import (
+    get_instruction_parser_dependency,
+    get_test_container,
+    get_verification_orchestrator_dependency,
+    override_container_for_testing,
+    restore_container,
+)
+from src.verification_service.app.services.instruction_retrieval import (
+    InstructionRetrievalService,
+)
 
 
 @pytest.fixture
@@ -19,7 +31,14 @@ def mock_xor_algorithm():
 
 @pytest.fixture
 def instruction_parser():
-    return InstructionParser()
+    """Get InstructionParser from DI container."""
+    test_container = get_test_container()
+    override_container_for_testing(test_container)
+
+    try:
+        yield get_instruction_parser_dependency()
+    finally:
+        restore_container()
 
 
 @pytest.fixture
@@ -45,3 +64,66 @@ def sample_custom_operations_data():
         {"value": 42},
         {"value": 100},
     ]
+
+
+@pytest.fixture
+def test_container():
+    return get_test_container()
+
+
+@pytest.fixture
+def mock_instruction_retrieval_service():
+    from unittest.mock import AsyncMock
+
+    mock = Mock(spec=InstructionRetrievalService)
+    mock.get_modification_instructions = AsyncMock()
+    return mock
+
+
+@pytest.fixture
+def container_with_mocks(test_container, mock_instruction_retrieval_service):
+    test_container.set_instruction_retrieval_service(mock_instruction_retrieval_service)
+
+    # Override global container for tests
+    override_container_for_testing(test_container)
+
+    yield test_container
+
+    # Restore original container after test
+    restore_container()
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def setup_test_database():
+    from tortoise import Tortoise
+
+    await Tortoise.init(
+        db_url="sqlite://:memory:",
+        modules={
+            "models": [
+                "src.verification_service.app.models.verification_result",
+            ]
+        },
+    )
+    await Tortoise.generate_schemas()
+    yield
+    await Tortoise.close_connections()
+
+
+@pytest.fixture
+def test_client(test_container):
+    app = FastAPI()
+
+    # Override FastAPI dependencies with test container services
+    app.dependency_overrides[get_verification_orchestrator_dependency] = (
+        lambda: test_container.verification_orchestrator
+    )
+
+    app.include_router(public.router, prefix="/api", tags=["public"])
+    app.include_router(internal.router, prefix="/internal", tags=["internal"])
+
+    @app.get("/health")
+    async def health_check():
+        return {"status": "healthy", "service": "verification"}
+
+    return TestClient(app)

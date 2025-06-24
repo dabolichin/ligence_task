@@ -25,8 +25,18 @@ class VariantGenerationService:
         from ..core.config import get_settings
 
         self.settings = settings or get_settings()
-        self.file_storage = file_storage or FileStorageService()
-        self.modification_engine = modification_engine or ModificationEngine()
+
+        if file_storage is None:
+            raise ValueError(
+                "FileStorageService must be provided via dependency injection"
+            )
+        if modification_engine is None:
+            raise ValueError(
+                "ModificationEngine must be provided via dependency injection"
+            )
+
+        self.file_storage = file_storage
+        self.modification_engine = modification_engine
 
     async def generate_variants(
         self,

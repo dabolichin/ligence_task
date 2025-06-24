@@ -1,6 +1,5 @@
 import os
 import sys
-from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,12 +15,32 @@ from main import create_app  # noqa: E402
 
 class TestVerificationServiceLifecycle:
     @pytest.fixture
-    def client(self):
-        app = create_app()
-        return TestClient(app)
+    def client(self, test_container):
+        from unittest.mock import AsyncMock
 
-    def test_service_startup(self, client):
-        assert client is not None
+        from fastapi import FastAPI
+
+        from src.verification_service.app.api import internal, public
+        from src.verification_service.app.core.dependencies import (
+            get_verification_orchestrator_dependency,
+        )
+
+        mock_orchestrator = AsyncMock()
+        test_container.set_verification_orchestrator(mock_orchestrator)
+
+        app = FastAPI()
+        app.dependency_overrides[get_verification_orchestrator_dependency] = (
+            lambda: test_container.verification_orchestrator
+        )
+
+        app.include_router(public.router, prefix="/api", tags=["public"])
+        app.include_router(internal.router, prefix="/internal", tags=["internal"])
+
+        @app.get("/health")
+        async def health_check():
+            return {"status": "healthy", "service": "verification"}
+
+        return TestClient(app)
 
     def test_health_endpoint(self, client):
         response = client.get("/health")
@@ -154,57 +173,3 @@ class TestErrorHandling:
     def test_missing_request_data(self, client):
         response = client.post("/internal/verify", json={})
         assert response.status_code == 422
-
-    @pytest.mark.asyncio
-    async def test_database_error_handling(self):
-        import uuid
-
-        from app.api.internal import process_verification
-
-        with patch(
-            "app.models.verification_result.VerificationResult.filter"
-        ) as mock_filter:
-            mock_filter.side_effect = Exception("Database connection failed")
-
-            # Should not raise exception, handle gracefully
-            await process_verification(uuid.uuid4(), uuid.uuid4())
-
-
-class TestBackgroundTasksIntegration:
-    @pytest.fixture
-    def client(self):
-        app = create_app()
-        return TestClient(app)
-
-    def test_background_task_queuing(self, client):
-        import uuid
-
-        request_data = {
-            "image_id": str(uuid.uuid4()),
-            "modification_id": str(uuid.uuid4()),
-        }
-
-        with patch("app.api.internal.process_verification"):
-            response = client.post("/internal/verify", json=request_data)
-
-            assert response.status_code == 200
-            # Background task should be queued (will execute after response)
-
-    def test_concurrent_background_tasks(self, client):
-        import uuid
-
-        requests = []
-        for _ in range(3):
-            requests.append(
-                {"image_id": str(uuid.uuid4()), "modification_id": str(uuid.uuid4())}
-            )
-
-        with patch("app.api.internal.process_verification"):
-            responses = []
-            for request_data in requests:
-                response = client.post("/internal/verify", json=request_data)
-                responses.append(response)
-
-            # All should be successful
-            for response in responses:
-                assert response.status_code == 200

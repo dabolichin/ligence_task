@@ -1,61 +1,21 @@
-from uuid import UUID
-
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from loguru import logger
 
+from ..core.dependencies import get_verification_orchestrator_dependency
 from ..models.verification_result import VerificationResult, VerificationStatus
 from ..schemas import VerificationRequestData as VerificationRequest
+from ..services.verification_orchestrator import VerificationOrchestrator
 
 router = APIRouter()
-
-
-async def process_verification(image_id: UUID, modification_id: UUID):
-    logger.info(
-        f"Processing verification for modification {modification_id} (image {image_id})"
-    )
-
-    try:
-        existing = await VerificationResult.filter(
-            modification_id=modification_id
-        ).first()
-
-        if existing:
-            logger.info(
-                f"Verification record already exists for modification {modification_id}"
-            )
-            return
-
-        await VerificationResult.create(
-            modification_id=modification_id,
-            status=VerificationStatus.PENDING,
-        )
-
-        logger.info(f"Created verification record for modification {modification_id}")
-
-        # TODO: Implement actual verification logic
-        # For now, just mark as completed
-        verification_result = await VerificationResult.filter(
-            modification_id=modification_id
-        ).first()
-
-        if verification_result:
-            verification_result.status = VerificationStatus.COMPLETED
-            verification_result.is_reversible = True
-            verification_result.verified_with_hash = True
-            verification_result.verified_with_pixels = True
-            await verification_result.save()
-
-    except Exception as e:
-        logger.error(
-            f"Error processing verification for modification {modification_id}: {e}",
-            exc_info=True,
-        )
 
 
 @router.post("/verify")
 async def receive_verification_request(
     request: VerificationRequest,
     background_tasks: BackgroundTasks,
+    verification_orchestrator: VerificationOrchestrator = Depends(
+        get_verification_orchestrator_dependency
+    ),
 ) -> dict:
     """Receive verification request from Image Processing Service."""
     logger.info(
@@ -63,8 +23,33 @@ async def receive_verification_request(
     )
 
     try:
+        existing_verification = await VerificationResult.filter(
+            modification_id=request.modification_id
+        ).first()
+
+        if existing_verification:
+            logger.info(
+                f"Verification already exists for modification {request.modification_id}"
+            )
+            return {
+                "status": "accepted",
+                "modification_id": str(request.modification_id),
+                "message": "Verification request already exists",
+            }
+
+        verification_record = await VerificationResult.create(
+            modification_id=request.modification_id,
+            status=VerificationStatus.PENDING,
+        )
+
+        logger.info(
+            f"Created verification record {verification_record.id} for modification {request.modification_id}"
+        )
+
         background_tasks.add_task(
-            process_verification, request.image_id, request.modification_id
+            verification_orchestrator.execute_verification_background,
+            request.image_id,
+            request.modification_id,
         )
 
         return {

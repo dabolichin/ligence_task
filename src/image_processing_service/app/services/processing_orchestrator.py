@@ -20,8 +20,18 @@ class ProcessingOrchestrator:
         from ..core.config import get_settings
 
         self.settings = settings or get_settings()
-        self.file_storage = file_storage or FileStorageService()
-        self.variant_generator = variant_generator or VariantGenerationService()
+
+        if file_storage is None:
+            raise ValueError(
+                "FileStorageService must be provided via dependency injection"
+            )
+        if variant_generator is None:
+            raise ValueError(
+                "VariantGenerationService must be provided via dependency injection"
+            )
+
+        self.file_storage = file_storage
+        self.variant_generator = variant_generator
 
     async def start_image_processing(
         self, file_data: bytes, original_filename: str
