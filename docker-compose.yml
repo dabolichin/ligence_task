@@ -11,7 +11,7 @@ services:
     environment:
       - SERVICE_NAME=image-processing-service
       - SERVICE_PORT=8001
-      - DATABASE_URL=sqlite:///app/storage/databases/image_processing.db
+      - DATABASE_URL=sqlite:////app/storage/databases/image_processing.db
       - IMAGE_STORAGE_PATH=/app/storage/images
       - VERIFICATION_SERVICE_URL=http://verification-service:8002
       - LOG_LEVEL=INFO
@@ -25,17 +25,8 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
-    command:
-      [
-        "uv",
-        "run",
-        "uvicorn",
-        "src.image_processing_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8001",
-      ]
+    working_dir: /app/src/image_processing_service
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
     depends_on:
       - verification-service
 
@@ -51,7 +42,7 @@ services:
     environment:
       - SERVICE_NAME=verification-service
       - SERVICE_PORT=8002
-      - DATABASE_URL=sqlite:///app/storage/databases/verification.db
+      - DATABASE_URL=sqlite:////app/storage/databases/verification.db
       - IMAGE_PROCESSING_SERVICE_URL=http://image-processing-service:8001
       - TEMP_STORAGE_PATH=/app/storage/temp
       - LOG_LEVEL=INFO
@@ -65,17 +56,8 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
-    command:
-      [
-        "uv",
-        "run",
-        "uvicorn",
-        "src.verification_service.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8002",
-      ]
+    working_dir: /app/src/verification_service
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
 
   # Web Interface
   web-interface:
@@ -102,42 +84,16 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
-    command:
-      [
-        "uv",
-        "run",
-        "uvicorn",
-        "src.web_interface.main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000",
-      ]
+    working_dir: /app/src/web_interface
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     depends_on:
       - image-processing-service
       - verification-service
 
 volumes:
   image_storage:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./storage/images
-
   database_storage:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./storage/databases
-
   temp_storage:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./storage/temp
 
 networks:
   app-network:

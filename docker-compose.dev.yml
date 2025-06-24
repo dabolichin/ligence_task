@@ -3,12 +3,11 @@ services:
     environment:
       - LOG_LEVEL=DEBUG
       - ENVIRONMENT=development
+    working_dir: /app/src/image_processing_service
     command:
       [
-        "uv",
-        "run",
         "uvicorn",
-        "src.image_processing_service.main:app",
+        "main:app",
         "--host",
         "0.0.0.0",
         "--port",
@@ -41,12 +40,11 @@ services:
     environment:
       - LOG_LEVEL=DEBUG
       - ENVIRONMENT=development
+    working_dir: /app/src/verification_service
     command:
       [
-        "uv",
-        "run",
         "uvicorn",
-        "src.verification_service.main:app",
+        "main:app",
         "--host",
         "0.0.0.0",
         "--port",
@@ -79,12 +77,11 @@ services:
     environment:
       - LOG_LEVEL=DEBUG
       - ENVIRONMENT=development
+    working_dir: /app/src/web_interface
     command:
       [
-        "uv",
-        "run",
         "uvicorn",
-        "src.web_interface.main:app",
+        "main:app",
         "--host",
         "0.0.0.0",
         "--port",

@@ -30,7 +30,8 @@ RUN mkdir -p \
     /app/storage/images/modified \
     /app/storage/temp \
     /app/.cache/uv \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app \
+    && chmod -R 755 /app/storage
 
 USER appuser
 
