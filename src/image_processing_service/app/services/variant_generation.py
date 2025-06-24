@@ -1,7 +1,8 @@
 import random
 from dataclasses import asdict
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
+import httpx
 from image_modification_algorithms import ModificationEngine
 from loguru import logger
 from PIL import Image
@@ -27,7 +28,10 @@ class VariantGenerationService:
         self.modification_engine = modification_engine or ModificationEngine()
 
     async def generate_variants(
-        self, original_image: Image.Image, image_record: ImageModel
+        self,
+        original_image: Image.Image,
+        image_record: ImageModel,
+        notification_callback: Optional[Callable[[str, str], None]] = None,
     ) -> List[Dict]:
         if original_image is None:
             raise ValueError("Original image cannot be None")
@@ -57,6 +61,11 @@ class VariantGenerationService:
                     max_modifications=max_modifications,
                 )
                 variants.append(variant_info)
+
+                # Notify verification service immediately after each variant
+                await self._notify_verification_service(
+                    str(image_record.id), variant_info["modification_id"]
+                )
 
             logger.info(
                 f"Generated {len(variants)} variants for image {image_record.id}"
@@ -134,3 +143,34 @@ class VariantGenerationService:
             image_id=image_id, variant_number=variant_number
         ).first()
         return modification
+
+    async def _notify_verification_service(
+        self, image_id: str, modification_id: str
+    ) -> None:
+        try:
+            verification_request = {
+                "image_id": image_id,
+                "modification_id": modification_id,
+            }
+
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.post(
+                    f"{self.settings.VERIFICATION_SERVICE_URL}/internal/verify",
+                    json=verification_request,
+                )
+
+                if response.status_code == 200:
+                    logger.info(
+                        f"Successfully notified verification service for modification {modification_id}"
+                    )
+                else:
+                    logger.error(
+                        f"Failed to notify verification service for modification {modification_id}: "
+                        f"HTTP {response.status_code} - {response.text}"
+                    )
+
+        except Exception as e:
+            logger.error(
+                f"Error notifying verification service for modification {modification_id}: {e}",
+                exc_info=True,
+            )

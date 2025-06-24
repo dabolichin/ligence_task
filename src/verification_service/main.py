@@ -28,11 +28,13 @@ async def lifespan(app: FastAPI):
 
     await init_db()
     logger.info("Database initialized")
+
     logger.info("Verification Service startup complete")
 
     yield
 
     logger.info("Shutting down Verification Service...")
+
     await close_db()
 
 

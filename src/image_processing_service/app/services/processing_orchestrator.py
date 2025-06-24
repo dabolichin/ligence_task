@@ -81,8 +81,6 @@ class ProcessingOrchestrator:
 
             logger.info(f"Successfully generated variants for image {image_id}")
 
-            await self._notify_verification_service(image_id)
-
         except Exception as e:
             logger.error(f"Failed to process variants for image {image_id}: {e}")
 
@@ -101,10 +99,6 @@ class ProcessingOrchestrator:
 
         except Exception as cleanup_error:
             logger.warning(f"Failed to cleanup for image {image_id}: {cleanup_error}")
-
-    async def _notify_verification_service(self, image_id: str):
-        logger.info(f"TODO: Notify verification service for image {image_id}")
-        pass
 
     async def get_processing_status(
         self, processing_id: str

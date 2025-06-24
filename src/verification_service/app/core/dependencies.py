@@ -1,3 +1,5 @@
+from image_modification_algorithms import ModificationEngine
+
 from src.verification_service.app.core.config import Settings, get_settings
 from src.verification_service.app.services.instruction_parser import InstructionParser
 
@@ -6,6 +8,7 @@ class ServiceContainer:
     def __init__(self):
         self._settings = None
         self._instruction_parser = None
+        self._modification_engine = None
 
     @property
     def settings(self) -> Settings:
@@ -19,6 +22,12 @@ class ServiceContainer:
             self._instruction_parser = InstructionParser()
         return self._instruction_parser
 
+    @property
+    def modification_engine(self) -> ModificationEngine:
+        if self._modification_engine is None:
+            self._modification_engine = ModificationEngine()
+        return self._modification_engine
+
     def set_settings(self, settings: Settings) -> None:
         """For testing purposes."""
         self._settings = settings
@@ -27,10 +36,15 @@ class ServiceContainer:
         """For testing purposes."""
         self._instruction_parser = parser
 
+    def set_modification_engine(self, engine: ModificationEngine) -> None:
+        """For testing purposes."""
+        self._modification_engine = engine
+
     def reset(self):
         """Reset all cached dependencies."""
         self._settings = None
         self._instruction_parser = None
+        self._modification_engine = None
 
 
 # Global container instance
@@ -48,8 +62,11 @@ def get_service_container() -> ServiceContainer:
 
 
 def get_instruction_parser_dependency() -> InstructionParser:
-    """Get instruction parser from the service container."""
     return _container.instruction_parser
+
+
+def get_modification_engine_dependency() -> ModificationEngine:
+    return _container.modification_engine
 
 
 # Testing support functions

@@ -126,7 +126,6 @@ class TestProcessingOrchestrator:
 
         with (
             patch.object(ImageModel, "create") as mock_create,
-            patch.object(orchestrator, "_notify_verification_service") as _,
         ):
             mock_create.return_value = mock_image_record
 
