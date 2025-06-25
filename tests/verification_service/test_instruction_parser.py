@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+from typing import Any
+
 import pytest
 from image_modification_algorithms.types import (
     Modification,
@@ -10,15 +13,15 @@ from src.verification_service.app.services.instruction_parser import (
 )
 
 
+@dataclass
 class MockOperation(SerializableOperation):
-    def __init__(self, value: int):
-        self.value = value
+    value: int
 
-    def to_dict(self) -> dict[str, int]:
+    def to_dict(self) -> dict[str, Any]:
         return {"value": self.value}
 
     @classmethod
-    def from_dict(cls, data: dict[str, int]) -> "MockOperation":
+    def from_dict(cls, data: dict[str, Any]) -> "MockOperation":
         return cls(data["value"])
 
 

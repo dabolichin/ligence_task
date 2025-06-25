@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import dataclass
 
 from loguru import logger
 from PIL import Image
@@ -208,10 +209,8 @@ class VerificationOrchestrator:
             )
 
 
+@dataclass(frozen=True)
 class VerificationOutcome:
-    def __init__(
-        self, is_reversible: bool, verified_with_hash: bool, verified_with_pixels: bool
-    ):
-        self.is_reversible = is_reversible
-        self.verified_with_hash = verified_with_hash
-        self.verified_with_pixels = verified_with_pixels
+    is_reversible: bool
+    verified_with_hash: bool
+    verified_with_pixels: bool

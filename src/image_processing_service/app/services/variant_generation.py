@@ -1,6 +1,5 @@
 import random
 from dataclasses import asdict
-from typing import Callable
 
 import httpx
 from image_modification_algorithms import ModificationEngine
@@ -42,7 +41,6 @@ class VariantGenerationService:
         self,
         original_image: Image.Image,
         image_record: ImageModel,
-        notification_callback: Callable[[str, str], None] | None = None,
     ) -> list[dict]:
         if original_image is None:
             raise ValueError("Original image cannot be None")

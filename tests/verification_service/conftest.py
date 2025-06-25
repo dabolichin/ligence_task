@@ -16,6 +16,9 @@ from src.verification_service.app.core.dependencies import (
     override_container_for_testing,
     restore_container,
 )
+from src.verification_service.app.services.image_comparison import (
+    ImageComparisonService,
+)
 from src.verification_service.app.services.instruction_retrieval import (
     InstructionRetrievalService,
 )
@@ -78,6 +81,77 @@ def mock_instruction_retrieval_service():
     mock = Mock(spec=InstructionRetrievalService)
     mock.get_modification_instructions = AsyncMock()
     return mock
+
+
+@pytest.fixture
+def comparison_service():
+    return ImageComparisonService()
+
+
+@pytest.fixture
+def sample_image_rgb():
+    from PIL import Image
+
+    image = Image.new("RGB", (10, 10), color=(255, 0, 0))  # Red 10x10 image
+    return image
+
+
+@pytest.fixture
+def sample_image_grayscale():
+    from PIL import Image
+
+    image = Image.new("L", (5, 5), color=128)  # Gray 5x5 image
+    return image
+
+
+@pytest.fixture
+def identical_image(sample_image_rgb):
+    return sample_image_rgb.copy()
+
+
+@pytest.fixture
+def different_color_image():
+    from PIL import Image
+
+    return Image.new("RGB", (10, 10), color=(0, 255, 0))  # Green 10x10 image
+
+
+@pytest.fixture
+def different_size_image():
+    from PIL import Image
+
+    return Image.new("RGB", (5, 5), color=(255, 0, 0))  # Same color, different size
+
+
+@pytest.fixture
+def different_mode_image():
+    from PIL import Image
+
+    return Image.new("L", (10, 10), color=128)  # Grayscale instead of RGB
+
+
+@pytest.fixture
+def temp_image_paths(sample_image_rgb, different_color_image):
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+
+        # Save sample images to temporary files
+        original_path = temp_dir / "original.png"
+        different_path = temp_dir / "different.png"
+        identical_path = temp_dir / "identical.png"
+
+        sample_image_rgb.save(original_path)
+        different_color_image.save(different_path)
+        sample_image_rgb.copy().save(identical_path)
+
+        yield {
+            "original": original_path,
+            "different": different_path,
+            "identical": identical_path,
+        }
 
 
 @pytest.fixture
