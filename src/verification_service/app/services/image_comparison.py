@@ -1,17 +1,11 @@
 import hashlib
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 
 import numpy as np
 from loguru import logger
 from PIL import Image
 
-
-class ComparisonMethod(Enum):
-    HASH_ONLY = "hash_only"
-    PIXEL_ONLY = "pixel_only"
-    BOTH = "both"
+from .domain import ComparisonMethod, ComparisonResult
 
 
 class ImageComparisonService:
@@ -141,18 +135,3 @@ class ImageComparisonService:
         except Exception as e:
             logger.error(f"Error calculating file hash: {e}")
             raise
-
-
-@dataclass(frozen=True)
-class ComparisonResult:
-    hash_match: bool | None
-    pixel_match: bool | None
-    original_hash: str | None
-    reversed_hash: str | None
-    method_used: str
-
-    def __str__(self) -> str:
-        return (
-            f"ComparisonResult(hash_match={self.hash_match}, "
-            f"pixel_match={self.pixel_match}, method_used={self.method_used})"
-        )

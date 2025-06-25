@@ -1,13 +1,7 @@
-from enum import Enum
-
 from tortoise import fields
 from tortoise.models import Model
 
-
-class VerificationStatus(str, Enum):
-    PENDING = "pending"
-    COMPLETED = "completed"
-    FAILED = "failed"
+from ..services.domain import VerificationStatus
 
 
 class VerificationResult(Model):

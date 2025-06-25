@@ -10,17 +10,12 @@ from image_modification_algorithms.types import (
 
 from src.verification_service.app.api import internal, public
 from src.verification_service.app.core.dependencies import (
-    get_instruction_parser_dependency,
-    get_test_container,
+    ServiceContainer,
+    get_service_container,
     get_verification_orchestrator_dependency,
-    override_container_for_testing,
-    restore_container,
 )
 from src.verification_service.app.services.image_comparison import (
     ImageComparisonService,
-)
-from src.verification_service.app.services.instruction_retrieval import (
-    InstructionRetrievalService,
 )
 
 
@@ -35,13 +30,7 @@ def mock_xor_algorithm():
 @pytest.fixture
 def instruction_parser():
     """Get InstructionParser from DI container."""
-    test_container = get_test_container()
-    override_container_for_testing(test_container)
-
-    try:
-        yield get_instruction_parser_dependency()
-    finally:
-        restore_container()
+    yield get_service_container().instruction_parser
 
 
 @pytest.fixture
@@ -71,16 +60,7 @@ def sample_custom_operations_data():
 
 @pytest.fixture
 def test_container():
-    return get_test_container()
-
-
-@pytest.fixture
-def mock_instruction_retrieval_service():
-    from unittest.mock import AsyncMock
-
-    mock = Mock(spec=InstructionRetrievalService)
-    mock.get_modification_instructions = AsyncMock()
-    return mock
+    return ServiceContainer()
 
 
 @pytest.fixture
@@ -102,11 +82,6 @@ def sample_image_grayscale():
 
     image = Image.new("L", (5, 5), color=128)  # Gray 5x5 image
     return image
-
-
-@pytest.fixture
-def identical_image(sample_image_rgb):
-    return sample_image_rgb.copy()
 
 
 @pytest.fixture
@@ -152,19 +127,6 @@ def temp_image_paths(sample_image_rgb, different_color_image):
             "different": different_path,
             "identical": identical_path,
         }
-
-
-@pytest.fixture
-def container_with_mocks(test_container, mock_instruction_retrieval_service):
-    test_container.set_instruction_retrieval_service(mock_instruction_retrieval_service)
-
-    # Override global container for tests
-    override_container_for_testing(test_container)
-
-    yield test_container
-
-    # Restore original container after test
-    restore_container()
 
 
 @pytest.fixture(scope="session", autouse=True)

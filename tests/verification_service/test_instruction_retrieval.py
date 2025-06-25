@@ -7,9 +7,7 @@ import pytest
 
 from src.verification_service.app.core.config import Settings
 from src.verification_service.app.core.dependencies import (
-    get_test_container,
-    override_container_for_testing,
-    restore_container,
+    ServiceContainer,
 )
 from src.verification_service.app.schemas import ModificationInstructionData
 from src.verification_service.app.services.instruction_retrieval import (
@@ -26,18 +24,13 @@ def mock_settings():
 
 @pytest.fixture
 def test_container():
-    return get_test_container()
+    return ServiceContainer()
 
 
 @pytest.fixture
 def instruction_retrieval_service(test_container, mock_settings):
     test_container.set_settings(mock_settings)
-
-    override_container_for_testing(test_container)
-
     yield test_container.instruction_retrieval_service
-
-    restore_container()
 
 
 @pytest.fixture

@@ -5,10 +5,7 @@ from loguru import logger
 
 from ..core.config import Settings
 from ..schemas import ModificationInstructionData
-
-
-class InstructionRetrievalError(Exception):
-    pass
+from .domain import InstructionRetrievalError
 
 
 class InstructionRetrievalService:

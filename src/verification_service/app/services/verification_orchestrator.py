@@ -1,13 +1,13 @@
 import uuid
-from dataclasses import dataclass
 
 from loguru import logger
-from PIL import Image
 
 from ..core.config import Settings
-from ..models.verification_result import VerificationResult, VerificationStatus
-from ..services.instruction_parser import InstructionParser
-from ..services.instruction_retrieval import InstructionRetrievalService
+from .domain import VerificationOutcome
+from .image_reversal import ImageReversalService
+from .instruction_parser import InstructionParser
+from .instruction_retrieval import InstructionRetrievalService
+from .verification_persistence import VerificationPersistence
 
 
 class VerificationOrchestrator:
@@ -16,6 +16,8 @@ class VerificationOrchestrator:
         instruction_retrieval_service: InstructionRetrievalService | None = None,
         instruction_parser: InstructionParser | None = None,
         modification_engine=None,
+        image_reversal_service: ImageReversalService | None = None,
+        verification_persistence: VerificationPersistence | None = None,
         settings: Settings = None,
     ):
         from ..core.config import get_settings
@@ -34,28 +36,41 @@ class VerificationOrchestrator:
             raise ValueError(
                 "ModificationEngine must be provided via dependency injection"
             )
+        if image_reversal_service is None:
+            raise ValueError(
+                "ImageReversalService must be provided via dependency injection"
+            )
+        if verification_persistence is None:
+            raise ValueError(
+                "VerificationPersistence must be provided via dependency injection"
+            )
 
         self.instruction_retrieval_service = instruction_retrieval_service
         self.instruction_parser = instruction_parser
         self.modification_engine = modification_engine
+        self.image_reversal_service = image_reversal_service
+        self.verification_persistence = verification_persistence
 
     async def verify_modification(
         self, image_id: uuid.UUID, modification_id: uuid.UUID
     ) -> None:
-        """Complete verification workflow including record creation."""
         logger.info(
             f"Starting verification for modification {modification_id} (image {image_id})"
         )
 
         try:
-            if await self._is_already_verified(modification_id):
+            if await self.verification_persistence.is_already_verified(modification_id):
                 return
 
-            await self._create_verification_record(modification_id)
+            await self.verification_persistence.create_verification_record(
+                modification_id
+            )
 
             verification_result = await self._execute_verification(modification_id)
 
-            await self._save_verification_result(modification_id, verification_result)
+            await self.verification_persistence.save_verification_result(
+                modification_id, verification_result
+            )
 
             logger.info(
                 f"Successfully completed verification for modification {modification_id}"
@@ -66,7 +81,9 @@ class VerificationOrchestrator:
                 f"Error verifying modification {modification_id}: {e}",
                 exc_info=True,
             )
-            await self._mark_verification_failed(modification_id)
+            await self.verification_persistence.mark_verification_failed(
+                modification_id
+            )
 
     async def execute_verification_background(
         self, image_id: uuid.UUID, modification_id: uuid.UUID
@@ -78,7 +95,9 @@ class VerificationOrchestrator:
         try:
             verification_result = await self._execute_verification(modification_id)
 
-            await self._save_verification_result(modification_id, verification_result)
+            await self.verification_persistence.save_verification_result(
+                modification_id, verification_result
+            )
 
             logger.info(
                 f"Successfully completed verification for modification {modification_id}"
@@ -89,28 +108,9 @@ class VerificationOrchestrator:
                 f"Error in background verification for modification {modification_id}: {e}",
                 exc_info=True,
             )
-            await self._mark_verification_failed(modification_id)
-
-    async def _is_already_verified(self, modification_id: uuid.UUID) -> bool:
-        existing = await VerificationResult.filter(
-            modification_id=modification_id
-        ).first()
-
-        if existing:
-            logger.info(
-                f"Verification record already exists for modification {modification_id}"
+            await self.verification_persistence.mark_verification_failed(
+                modification_id
             )
-            return True
-
-        return False
-
-    async def _create_verification_record(self, modification_id: uuid.UUID) -> None:
-        await VerificationResult.create(
-            modification_id=modification_id,
-            status=VerificationStatus.PENDING,
-        )
-
-        logger.info(f"Created verification record for modification {modification_id}")
 
     async def _execute_verification(
         self, modification_id: uuid.UUID
@@ -120,17 +120,23 @@ class VerificationOrchestrator:
         try:
             instruction_data = await self._retrieve_instructions(modification_id)
             modification_instructions = self._parse_instructions(instruction_data)
-            reversed_image = await self._reverse_image_modifications(
-                instruction_data, modification_instructions
+
+            comparison_result = (
+                await self.image_reversal_service.verify_modification_completely(
+                    instruction_data,
+                    modification_instructions,
+                    self.modification_engine,
+                )
             )
-            is_reversible = await self._verify_reversibility(
-                reversed_image, modification_id
+            is_fully_reversible = (
+                comparison_result.hash_match is True
+                and comparison_result.pixel_match is True
             )
 
             return VerificationOutcome(
-                is_reversible=is_reversible,
-                verified_with_hash=is_reversible,
-                verified_with_pixels=is_reversible,
+                is_reversible=is_fully_reversible,
+                verified_with_hash=comparison_result.hash_match or False,
+                verified_with_pixels=comparison_result.pixel_match or False,
             )
 
         except Exception as e:
@@ -150,67 +156,16 @@ class VerificationOrchestrator:
         )
 
     def _parse_instructions(self, instruction_data):
-        return self.instruction_parser.parse_instructions(
-            instruction_data.instructions, instruction_data.algorithm_type
+        algorithm = self.modification_engine.get_algorithm(
+            instruction_data.algorithm_type
         )
 
-    async def _reverse_image_modifications(
-        self, instruction_data, modification_instructions
-    ) -> Image.Image:
-        modified_image = Image.open(instruction_data.storage_path)
-        reversed_image = self.modification_engine.reverse_modifications(
-            modified_image, modification_instructions
+        # TODO: Implement safer parsing of ModificationInstructions
+        operations_data = instruction_data.instructions.get("operations", [])
+        image_mode = instruction_data.instructions.get("image_mode", "RGB")
+
+        return self.instruction_parser.parse_modification_instructions(
+            algorithm=algorithm,
+            image_mode=image_mode,
+            operations_data=operations_data,
         )
-
-        return reversed_image
-
-    async def _verify_reversibility(
-        self, reversed_image: Image.Image, modification_id: uuid.UUID
-    ) -> bool:
-        # TODO: Implement actual comparison with original image
-        # For now, assume success True
-        logger.info(f"Reversibility verified for modification {modification_id}")
-        return True
-
-    async def _save_verification_result(
-        self, modification_id: uuid.UUID, result: "VerificationOutcome"
-    ) -> None:
-        verification_record = await VerificationResult.filter(
-            modification_id=modification_id
-        ).first()
-
-        if verification_record:
-            verification_record.status = VerificationStatus.COMPLETED
-            verification_record.is_reversible = result.is_reversible
-            verification_record.verified_with_hash = result.verified_with_hash
-            verification_record.verified_with_pixels = result.verified_with_pixels
-            await verification_record.save()
-
-    async def _mark_verification_failed(self, modification_id: uuid.UUID) -> None:
-        try:
-            verification_record = await VerificationResult.filter(
-                modification_id=modification_id
-            ).first()
-
-            if verification_record:
-                verification_record.status = VerificationStatus.COMPLETED
-                verification_record.is_reversible = False
-                verification_record.verified_with_hash = False
-                verification_record.verified_with_pixels = False
-                await verification_record.save()
-
-                logger.info(
-                    f"Marked verification as failed for modification {modification_id}"
-                )
-
-        except Exception as cleanup_error:
-            logger.error(
-                f"Failed to mark verification as failed for modification {modification_id}: {cleanup_error}"
-            )
-
-
-@dataclass(frozen=True)
-class VerificationOutcome:
-    is_reversible: bool
-    verified_with_hash: bool
-    verified_with_pixels: bool

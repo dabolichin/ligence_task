@@ -6,9 +6,7 @@ from image_modification_algorithms.types import (
     SerializableOperation,
 )
 
-
-class InstructionParseError(Exception):
-    pass
+from .domain import InstructionParseError
 
 
 class InstructionParser:
