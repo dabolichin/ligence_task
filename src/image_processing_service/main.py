@@ -71,10 +71,6 @@ def create_app() -> FastAPI:
             name="modified_images",
         )
 
-    @app.get("/health")
-    async def health_check():
-        return {"status": "healthy", "service": "image-processing"}
-
     return app
 
 

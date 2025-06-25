@@ -11,6 +11,9 @@ from src.verification_service.app.services.instruction_parser import Instruction
 from src.verification_service.app.services.instruction_retrieval import (
     InstructionRetrievalService,
 )
+from src.verification_service.app.services.verification_history import (
+    VerificationHistoryService,
+)
 from src.verification_service.app.services.verification_orchestrator import (
     VerificationOrchestrator,
 )
@@ -29,6 +32,7 @@ class ServiceContainer:
         self._image_reversal_service = None
         self._verification_persistence = None
         self._verification_orchestrator = None
+        self._verification_history_service = None
 
     @property
     def settings(self) -> Settings:
@@ -88,6 +92,12 @@ class ServiceContainer:
             )
         return self._verification_orchestrator
 
+    @property
+    def verification_history_service(self) -> VerificationHistoryService:
+        if self._verification_history_service is None:
+            self._verification_history_service = VerificationHistoryService()
+        return self._verification_history_service
+
     def set_settings(self, settings: Settings) -> None:
         """For testing purposes."""
         self._settings = settings
@@ -126,6 +136,12 @@ class ServiceContainer:
         """For testing purposes."""
         self._verification_orchestrator = orchestrator
 
+    def set_verification_history_service(
+        self, service: VerificationHistoryService
+    ) -> None:
+        """For testing purposes."""
+        self._verification_history_service = service
+
     def reset(self):
         """Reset all cached dependencies."""
         self._settings = None
@@ -136,6 +152,7 @@ class ServiceContainer:
         self._image_reversal_service = None
         self._verification_persistence = None
         self._verification_orchestrator = None
+        self._verification_history_service = None
 
 
 # Global container instance
@@ -150,6 +167,11 @@ def get_service_container() -> ServiceContainer:
 def get_verification_orchestrator_dependency() -> VerificationOrchestrator:
     """Get verification orchestrator for FastAPI dependency injection."""
     return _container.verification_orchestrator
+
+
+def get_verification_history_service_dependency() -> VerificationHistoryService:
+    """Get verification history service for FastAPI dependency injection."""
+    return _container.verification_history_service
 
 
 def reset_service_container() -> None:

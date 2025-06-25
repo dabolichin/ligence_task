@@ -154,6 +154,7 @@ The Reversible Image Alteration System is a distributed application that applies
     - GET `/verification/{id}/status` for verification status
     - GET `/verification/statistics` for overall verification metrics
     - GET `/verification/history` for verification audit trail
+    - GET `/verification/modifications/{modification_id}` for all verifications of a specific modification
 - Verification Service internal API:
     - POST `/internal/verify` to receive verification requests
 - Use asynchronous communication patterns where appropriate
