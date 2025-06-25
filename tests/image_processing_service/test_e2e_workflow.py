@@ -1,4 +1,3 @@
-import io
 import uuid
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -24,53 +23,7 @@ from src.image_processing_service.app.services.processing_orchestrator import (
 from src.image_processing_service.app.services.variant_generation import (
     VariantGenerationService,
 )
-
-
-class RealImageFixtures:
-    @staticmethod
-    def get_assets_dir():
-        return Path(__file__).parent.parent / "assets"
-
-    @staticmethod
-    def load_small_test_image():
-        assets_dir = RealImageFixtures.get_assets_dir()
-        image_path = assets_dir / "small_red.jpg"
-        if not image_path.exists():
-            image = Image.new("RGB", (5, 5), color="red")
-            img_bytes = io.BytesIO()
-            image.save(img_bytes, format="JPEG")
-            return img_bytes.getvalue(), "tiny_red.jpg"
-
-        with open(image_path, "rb") as f:
-            return f.read(), "small_red.jpg"
-
-    @staticmethod
-    def load_pattern_test_image():
-        assets_dir = RealImageFixtures.get_assets_dir()
-        image_path = assets_dir / "tiny_2x2.png"
-        if not image_path.exists():
-            image = Image.new("RGB", (2, 2))
-            image.putpixel((0, 0), (255, 0, 0))
-            image.putpixel((1, 1), (0, 255, 0))
-            img_bytes = io.BytesIO()
-            image.save(img_bytes, format="PNG")
-            return img_bytes.getvalue(), "tiny_pattern.png"
-
-        with open(image_path, "rb") as f:
-            return f.read(), "tiny_2x2.png"
-
-    @staticmethod
-    def load_grayscale_test_image():
-        assets_dir = RealImageFixtures.get_assets_dir()
-        image_path = assets_dir / "small_gray.png"
-        if not image_path.exists():
-            image = Image.new("L", (3, 3), color=128)
-            img_bytes = io.BytesIO()
-            image.save(img_bytes, format="PNG")
-            return img_bytes.getvalue(), "tiny_gray.png"
-
-        with open(image_path, "rb") as f:
-            return f.read(), "small_gray.png"
+from tests.shared_fixtures import SharedImageFixtures
 
 
 class TestCompleteServiceWorkflow:
@@ -128,7 +81,7 @@ class TestCompleteServiceWorkflow:
     @pytest.fixture
     def sample_image_data(self):
         """Get real tiny test image data for fastest testing."""
-        return RealImageFixtures.load_pattern_test_image()
+        return SharedImageFixtures.load_tiny_image()
 
     async def _check_for_processing_start(self, client, processing_id):
         status_response = client.get(f"/api/processing/{processing_id}/status")
@@ -345,7 +298,7 @@ class TestCompleteServiceWorkflow:
     async def test_large_image_workflow(self, integration_client):
         client, container = integration_client
 
-        test_image_data, filename = RealImageFixtures.load_pattern_test_image()
+        test_image_data, filename = SharedImageFixtures.load_pattern_image()
 
         upload_response = client.post(
             "/api/modify",
@@ -376,7 +329,9 @@ class TestCompleteServiceWorkflow:
     async def test_grayscale_image_workflow(self, integration_client):
         client, container = integration_client
 
-        grayscale_image_data, filename = RealImageFixtures.load_grayscale_test_image()
+        grayscale_image_data, filename = (
+            SharedImageFixtures.load_small_grayscale_image()
+        )
 
         upload_response = client.post(
             "/api/modify",

@@ -14,7 +14,6 @@ class TestVerificationOrchestrator:
     def mock_dependencies(self):
         return {
             "instruction_retrieval_service": AsyncMock(),
-            "instruction_parser": Mock(),
             "modification_engine": Mock(),
             "image_reversal_service": AsyncMock(),
             "verification_persistence": AsyncMock(),
@@ -43,16 +42,10 @@ class TestVerificationOrchestrator:
             "instruction_retrieval_service"
         ].get_modification_instructions.return_value = mock_instruction_data
 
-        mock_algorithm = Mock()
-        mock_algorithm.get_name.return_value = "xor_transform"
-        mock_dependencies[
-            "modification_engine"
-        ].get_algorithm.return_value = mock_algorithm
-
         mock_modification_instructions = Mock()
         mock_dependencies[
-            "instruction_parser"
-        ].parse_modification_instructions.return_value = mock_modification_instructions
+            "modification_engine"
+        ].parse_instruction_data.return_value = mock_modification_instructions
 
         mock_comparison_result = ComparisonResult(
             hash_match=True,
@@ -76,12 +69,9 @@ class TestVerificationOrchestrator:
         mock_dependencies[
             "instruction_retrieval_service"
         ].get_modification_instructions.assert_called_once_with(modification_id)
-        mock_dependencies["modification_engine"].get_algorithm.assert_called_once_with(
-            "xor_transform"
-        )
         mock_dependencies[
-            "instruction_parser"
-        ].parse_modification_instructions.assert_called_once()
+            "modification_engine"
+        ].parse_instruction_data.assert_called_once_with(mock_instruction_data)
         mock_dependencies[
             "image_reversal_service"
         ].verify_modification_completely.assert_called_once()
@@ -151,7 +141,6 @@ class TestVerificationOrchestratorIntegration:
 
         service = VerificationOrchestrator(
             instruction_retrieval_service=mock_instruction_retrieval,
-            instruction_parser=Mock(),
             modification_engine=Mock(),
             image_reversal_service=AsyncMock(),
             verification_persistence=AsyncMock(),

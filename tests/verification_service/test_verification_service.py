@@ -148,9 +148,6 @@ class TestServiceIntegration:
         settings = container.settings
         assert settings is not None
 
-        instruction_parser = container.instruction_parser
-        assert instruction_parser is not None
-
 
 class TestErrorHandling:
     @pytest.fixture

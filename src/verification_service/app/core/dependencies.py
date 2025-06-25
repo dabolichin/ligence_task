@@ -7,7 +7,6 @@ from src.verification_service.app.services.image_comparison import (
 from src.verification_service.app.services.image_reversal import (
     ImageReversalService,
 )
-from src.verification_service.app.services.instruction_parser import InstructionParser
 from src.verification_service.app.services.instruction_retrieval import (
     InstructionRetrievalService,
 )
@@ -25,7 +24,7 @@ from src.verification_service.app.services.verification_persistence import (
 class ServiceContainer:
     def __init__(self):
         self._settings = None
-        self._instruction_parser = None
+
         self._modification_engine = None
         self._instruction_retrieval_service = None
         self._image_comparison_service = None
@@ -39,12 +38,6 @@ class ServiceContainer:
         if self._settings is None:
             self._settings = get_settings()
         return self._settings
-
-    @property
-    def instruction_parser(self) -> InstructionParser:
-        if self._instruction_parser is None:
-            self._instruction_parser = InstructionParser()
-        return self._instruction_parser
 
     @property
     def modification_engine(self) -> ModificationEngine:
@@ -85,7 +78,6 @@ class ServiceContainer:
         if self._verification_orchestrator is None:
             self._verification_orchestrator = VerificationOrchestrator(
                 instruction_retrieval_service=self.instruction_retrieval_service,
-                instruction_parser=self.instruction_parser,
                 modification_engine=self.modification_engine,
                 image_reversal_service=self.image_reversal_service,
                 verification_persistence=self.verification_persistence,
@@ -101,10 +93,6 @@ class ServiceContainer:
     def set_settings(self, settings: Settings) -> None:
         """For testing purposes."""
         self._settings = settings
-
-    def set_instruction_parser(self, parser: InstructionParser) -> None:
-        """For testing purposes."""
-        self._instruction_parser = parser
 
     def set_modification_engine(self, engine: ModificationEngine) -> None:
         """For testing purposes."""
@@ -145,7 +133,7 @@ class ServiceContainer:
     def reset(self):
         """Reset all cached dependencies."""
         self._settings = None
-        self._instruction_parser = None
+
         self._modification_engine = None
         self._instruction_retrieval_service = None
         self._image_comparison_service = None

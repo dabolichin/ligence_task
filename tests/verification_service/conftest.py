@@ -11,7 +11,6 @@ from image_modification_algorithms.types import (
 from src.verification_service.app.api import internal, public
 from src.verification_service.app.core.dependencies import (
     ServiceContainer,
-    get_service_container,
     get_verification_orchestrator_dependency,
 )
 from src.verification_service.app.services.image_comparison import (
@@ -25,12 +24,6 @@ def mock_xor_algorithm():
     mock_algorithm.get_name.return_value = "xor_transform"
     mock_algorithm.get_operation_class.return_value = PixelOperation
     return mock_algorithm
-
-
-@pytest.fixture
-def instruction_parser():
-    """Get InstructionParser from DI container."""
-    yield get_service_container().instruction_parser
 
 
 @pytest.fixture

@@ -5,7 +5,6 @@ from loguru import logger
 from ..core.config import Settings
 from .domain import VerificationOutcome
 from .image_reversal import ImageReversalService
-from .instruction_parser import InstructionParser
 from .instruction_retrieval import InstructionRetrievalService
 from .verification_persistence import VerificationPersistence
 
@@ -14,7 +13,6 @@ class VerificationOrchestrator:
     def __init__(
         self,
         instruction_retrieval_service: InstructionRetrievalService | None = None,
-        instruction_parser: InstructionParser | None = None,
         modification_engine=None,
         image_reversal_service: ImageReversalService | None = None,
         verification_persistence: VerificationPersistence | None = None,
@@ -28,10 +26,7 @@ class VerificationOrchestrator:
             raise ValueError(
                 "InstructionRetrievalService must be provided via dependency injection"
             )
-        if instruction_parser is None:
-            raise ValueError(
-                "InstructionParser must be provided via dependency injection"
-            )
+
         if modification_engine is None:
             raise ValueError(
                 "ModificationEngine must be provided via dependency injection"
@@ -46,7 +41,7 @@ class VerificationOrchestrator:
             )
 
         self.instruction_retrieval_service = instruction_retrieval_service
-        self.instruction_parser = instruction_parser
+
         self.modification_engine = modification_engine
         self.image_reversal_service = image_reversal_service
         self.verification_persistence = verification_persistence
@@ -156,16 +151,4 @@ class VerificationOrchestrator:
         )
 
     def _parse_instructions(self, instruction_data):
-        algorithm = self.modification_engine.get_algorithm(
-            instruction_data.algorithm_type
-        )
-
-        # TODO: Implement safer parsing of ModificationInstructions
-        operations_data = instruction_data.instructions.get("operations", [])
-        image_mode = instruction_data.instructions.get("image_mode", "RGB")
-
-        return self.instruction_parser.parse_modification_instructions(
-            algorithm=algorithm,
-            image_mode=image_mode,
-            operations_data=operations_data,
-        )
+        return self.modification_engine.parse_instruction_data(instruction_data)
