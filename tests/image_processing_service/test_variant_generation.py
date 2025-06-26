@@ -9,19 +9,12 @@ class TestGenerateVariants:
     @pytest.mark.asyncio
     async def test_generate_exactly_100_variants(
         self,
-        test_container,
-        mock_file_storage,
-        mock_xor_algorithm,
+        variant_service,
         sample_image,
         mock_image_record,
     ):
-        mock_file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
         mock_modification = MagicMock()
         mock_modification.id = str(uuid.uuid4())
-
-        test_container.set_file_storage(mock_file_storage)
-        test_container.set_xor_algorithm(mock_xor_algorithm)
-        variant_service = test_container.variant_generator
 
         with patch(
             "src.image_processing_service.app.services.variant_generation.Modification.create"
@@ -39,26 +32,21 @@ class TestGenerateVariants:
             assert min(variant_numbers) == 1
             assert max(variant_numbers) == 100
 
-            assert mock_file_storage.save_variant_image.call_count == 100
+            assert variant_service.file_storage.save_variant_image.call_count == 100
 
             assert mock_create.call_count == 100
 
     @pytest.mark.asyncio
     async def test_generate_variants_with_small_image(
         self,
-        test_container,
-        mock_file_storage,
-        mock_xor_algorithm,
+        variant_service,
         small_sample_image,
         mock_image_record,
     ):
-        mock_file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
+        variant_service.file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
         mock_modification = MagicMock()
         mock_modification.id = str(uuid.uuid4())
 
-        test_container.set_file_storage(mock_file_storage)
-        test_container.set_xor_algorithm(mock_xor_algorithm)
-        variant_service = test_container.variant_generator
 
         with patch(
             "src.image_processing_service.app.services.variant_generation.Modification.create"
@@ -76,11 +64,8 @@ class TestGenerateVariants:
 
     @pytest.mark.asyncio
     async def test_generate_variants_input_validation(
-        self, test_container, mock_file_storage, mock_xor_algorithm
+        self, variant_service
     ):
-        test_container.set_file_storage(mock_file_storage)
-        test_container.set_xor_algorithm(mock_xor_algorithm)
-        variant_service = test_container.variant_generator
 
         mock_image_record = MagicMock()
 
@@ -94,19 +79,14 @@ class TestGenerateVariants:
     @pytest.mark.asyncio
     async def test_variant_structure(
         self,
-        test_container,
-        mock_file_storage,
-        mock_xor_algorithm,
+        variant_service,
         sample_image,
         mock_image_record,
     ):
-        mock_file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
+        variant_service.file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
         mock_modification = MagicMock()
         mock_modification.id = str(uuid.uuid4())
 
-        test_container.set_file_storage(mock_file_storage)
-        test_container.set_xor_algorithm(mock_xor_algorithm)
-        variant_service = test_container.variant_generator
 
         with patch(
             "src.image_processing_service.app.services.variant_generation.Modification.create"
@@ -137,19 +117,14 @@ class TestGenerateVariants:
     @pytest.mark.asyncio
     async def test_generate_variants_grayscale_image(
         self,
-        test_container,
-        mock_file_storage,
-        mock_xor_algorithm,
+        variant_service,
         grayscale_image,
         mock_image_record,
     ):
-        mock_file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
+        variant_service.file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
         mock_modification = MagicMock()
         mock_modification.id = str(uuid.uuid4())
 
-        test_container.set_file_storage(mock_file_storage)
-        test_container.set_xor_algorithm(mock_xor_algorithm)
-        variant_service = test_container.variant_generator
 
         with patch(
             "src.image_processing_service.app.services.variant_generation.Modification.create"

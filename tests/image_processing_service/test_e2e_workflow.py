@@ -10,7 +10,6 @@ from PIL import Image
 from src.image_processing_service.app.api.internal import router as internal_router
 from src.image_processing_service.app.api.public import router as public_router
 from src.image_processing_service.app.core.dependencies import (
-    ServiceContainer,
     get_file_storage,
     get_processing_orchestrator,
     get_variant_generator,
@@ -55,28 +54,25 @@ class TestCompleteServiceWorkflow:
             settings=mock_settings,
         )
 
-        # Create container and inject services
-        container = ServiceContainer()
-        container.set_file_storage(file_storage)
-        container.set_xor_algorithm(mock_xor_algorithm)
-        container.set_variant_generator(variant_generator)
-        container.set_processing_orchestrator(processing_orchestrator)
-
         from fastapi import FastAPI
 
         test_app = FastAPI()
         test_app.include_router(public_router, prefix="/api")
         test_app.include_router(internal_router, prefix="/internal")
 
-        test_app.dependency_overrides[get_file_storage] = lambda: container.file_storage
-        test_app.dependency_overrides[get_variant_generator] = (
-            lambda: container.variant_generator
-        )
+        test_app.dependency_overrides[get_file_storage] = lambda: file_storage
+        test_app.dependency_overrides[get_variant_generator] = lambda: variant_generator
         test_app.dependency_overrides[get_processing_orchestrator] = (
-            lambda: container.processing_orchestrator
+            lambda: processing_orchestrator
         )
 
-        yield TestClient(test_app), container
+        services = {
+            "file_storage": file_storage,
+            "variant_generator": variant_generator,
+            "processing_orchestrator": processing_orchestrator,
+        }
+
+        yield TestClient(test_app), services
 
     @pytest.fixture
     def sample_image_data(self):
@@ -96,7 +92,7 @@ class TestCompleteServiceWorkflow:
     async def test_complete_image_processing_workflow(
         self, integration_client, sample_image_data
     ):
-        client, container = integration_client
+        client, services = integration_client
         image_data, filename = sample_image_data
 
         # Step 1: Upload tiny image (2x2 pixels = very fast processing)
@@ -149,7 +145,7 @@ class TestCompleteServiceWorkflow:
     async def test_workflow_with_file_system_persistence(
         self, integration_client, sample_image_data, temp_storage_dir
     ):
-        client, container = integration_client
+        client, services = integration_client
         image_data, filename = sample_image_data
 
         upload_response = client.post(
@@ -180,7 +176,7 @@ class TestCompleteServiceWorkflow:
 
     @pytest.mark.asyncio
     async def test_workflow_error_handling(self, integration_client):
-        client, container = integration_client
+        client, services = integration_client
 
         invalid_response = client.post(
             "/api/modify",
@@ -205,7 +201,7 @@ class TestCompleteServiceWorkflow:
     async def test_concurrent_workflow_processing(
         self, integration_client, sample_image_data
     ):
-        client, container = integration_client
+        client, services = integration_client
         image_data, filename = sample_image_data
 
         upload_tasks = []
@@ -229,11 +225,11 @@ class TestCompleteServiceWorkflow:
     async def test_service_integration_boundaries(
         self, integration_client, sample_image_data
     ):
-        client, container = integration_client
+        client, services = integration_client
 
-        file_storage = container.file_storage
-        variant_generator = container.variant_generator
-        processing_orchestrator = container.processing_orchestrator
+        file_storage = services["file_storage"]
+        variant_generator = services["variant_generator"]
+        processing_orchestrator = services["processing_orchestrator"]
 
         assert variant_generator.file_storage is file_storage
         assert processing_orchestrator.file_storage is file_storage
@@ -262,7 +258,7 @@ class TestCompleteServiceWorkflow:
     async def test_api_endpoint_integration(
         self, integration_client, sample_image_data
     ):
-        client, container = integration_client
+        client, services = integration_client
 
         image_data, filename = sample_image_data
         upload_response = client.post(
@@ -296,7 +292,7 @@ class TestCompleteServiceWorkflow:
 
     @pytest.mark.asyncio
     async def test_large_image_workflow(self, integration_client):
-        client, container = integration_client
+        client, services = integration_client
 
         test_image_data, filename = SharedImageFixtures.load_pattern_image()
 
@@ -327,7 +323,7 @@ class TestCompleteServiceWorkflow:
 
     @pytest.mark.asyncio
     async def test_grayscale_image_workflow(self, integration_client):
-        client, container = integration_client
+        client, services = integration_client
 
         grayscale_image_data, filename = (
             SharedImageFixtures.load_small_grayscale_image()

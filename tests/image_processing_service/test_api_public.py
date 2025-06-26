@@ -14,7 +14,6 @@ class TestImageUploadEndpoint:
     def test_successful_image_upload(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
         sample_image_bytes,
     ):
@@ -27,8 +26,6 @@ class TestImageUploadEndpoint:
                 "file_size": len(sample_image_bytes),
             },
         )
-
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.post(
             "/api/modify",
@@ -69,14 +66,12 @@ class TestImageUploadEndpoint:
     def test_upload_processing_error(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
         sample_image_bytes,
     ):
         mock_processing_orchestrator.start_image_processing.side_effect = ValueError(
             "Invalid image format"
         )
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.post(
             "/api/modify",
@@ -90,7 +85,6 @@ class TestProcessingStatusEndpoint:
     def test_get_processing_status_success(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
     ):
         processing_id = uuid4()
@@ -108,7 +102,6 @@ class TestProcessingStatusEndpoint:
         mock_processing_orchestrator.get_processing_status.return_value = (
             mock_status_result
         )
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.get(f"/api/processing/{processing_id}/status")
 
@@ -123,12 +116,10 @@ class TestProcessingStatusEndpoint:
     def test_get_processing_status_not_found(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
     ):
         processing_id = str(uuid4())
         mock_processing_orchestrator.get_processing_status.return_value = None
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.get(f"/api/processing/{processing_id}/status")
         assert response.status_code == 404
@@ -143,7 +134,6 @@ class TestModificationDetailsEndpoint:
     def test_get_modification_details_success(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
     ):
         modification_id = uuid4()
@@ -162,7 +152,6 @@ class TestModificationDetailsEndpoint:
         mock_result.variants_count = 100
 
         mock_processing_orchestrator.get_modification_details.return_value = mock_result
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.get(f"/api/modifications/{modification_id}")
 
@@ -179,13 +168,11 @@ class TestModificationDetailsEndpoint:
     def test_get_modification_details_not_found(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
     ):
         modification_id = uuid4()
 
         mock_processing_orchestrator.get_modification_details.return_value = None
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.get(f"/api/modifications/{modification_id}")
 
@@ -197,7 +184,6 @@ class TestOriginalImageEndpoint:
     def test_serve_original_image_success(
         self,
         test_client,
-        test_container,
         mock_file_storage,
         sample_image_bytes,
     ):
@@ -209,7 +195,6 @@ class TestOriginalImageEndpoint:
 
         try:
             mock_file_storage.file_exists.return_value = True
-            test_container.set_file_storage(mock_file_storage)
 
             with patch("src.image_processing_service.app.models.Image.get") as mock_get:
                 mock_image = AsyncMock()
@@ -233,12 +218,8 @@ class TestOriginalImageEndpoint:
     def test_serve_original_image_file_missing(
         self,
         test_client,
-        test_container,
-        mock_file_storage,
     ):
         image_id = uuid4()
-        mock_file_storage.file_exists.return_value = False
-        test_container.set_file_storage(mock_file_storage)
 
         with patch("src.image_processing_service.app.models.Image.get") as mock_get:
             mock_image = AsyncMock()
@@ -254,7 +235,6 @@ class TestVariantListEndpoint:
     def test_list_image_variants_success(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
     ):
         image_id = uuid4()
@@ -275,7 +255,6 @@ class TestVariantListEndpoint:
         mock_processing_orchestrator.get_image_variants.return_value = (
             mock_modifications
         )
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.get(f"/api/images/{image_id}/variants")
 
@@ -299,12 +278,10 @@ class TestVariantListEndpoint:
     def test_list_image_variants_not_found(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
     ):
         image_id = uuid4()
         mock_processing_orchestrator.get_image_variants.return_value = None
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.get(f"/api/images/{image_id}/variants")
         assert response.status_code == 404
@@ -313,12 +290,10 @@ class TestVariantListEndpoint:
     def test_list_image_variants_empty(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
     ):
         image_id = uuid4()
         mock_processing_orchestrator.get_image_variants.return_value = []
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         response = test_client.get(f"/api/images/{image_id}/variants")
         assert response.status_code == 404
@@ -402,7 +377,6 @@ class TestEndToEndWorkflow:
     def test_complete_image_processing_workflow(
         self,
         test_client,
-        test_container,
         mock_processing_orchestrator,
         sample_image_bytes,
     ):
@@ -417,7 +391,6 @@ class TestEndToEndWorkflow:
                 "file_size": len(sample_image_bytes),
             },
         )
-        test_container.set_processing_orchestrator(mock_processing_orchestrator)
 
         upload_response = test_client.post(
             "/api/modify",

@@ -14,12 +14,9 @@ from tortoise import Tortoise
 from src.image_processing_service.app.api.internal import router as internal_router
 from src.image_processing_service.app.api.public import router as public_router
 from src.image_processing_service.app.core.dependencies import (
-    ServiceContainer,
     get_file_storage,
     get_processing_orchestrator,
     get_variant_generator,
-    override_container_for_testing,
-    restore_container,
 )
 from src.image_processing_service.app.models import Image as ImageModel
 from src.image_processing_service.app.services.file_storage import FileStorageService
@@ -49,15 +46,6 @@ def mock_settings(temp_storage_dir):
     settings.VARIANTS_COUNT = 100
     settings.MIN_MODIFICATIONS_PER_VARIANT = 100
     return settings
-
-
-@pytest.fixture
-def test_container():
-    """Create a fresh service container for each test."""
-    container = ServiceContainer()
-    override_container_for_testing(container)
-    yield container
-    restore_container()
 
 
 @pytest.fixture
@@ -222,10 +210,17 @@ def grayscale_image():
 
 
 @pytest.fixture
-def variant_service(test_container, mock_file_storage, mock_modification_engine):
-    test_container.set_file_storage(mock_file_storage)
-    test_container.set_modification_engine(mock_modification_engine)
-    return test_container.variant_generator
+def variant_service(mock_file_storage, mock_modification_engine):
+    from src.image_processing_service.app.core.config import get_settings
+    from src.image_processing_service.app.services.variant_generation import (
+        VariantGenerationService,
+    )
+
+    return VariantGenerationService(
+        file_storage=mock_file_storage,
+        modification_engine=mock_modification_engine,
+        settings=get_settings(),
+    )
 
 
 @pytest.fixture
@@ -237,16 +232,15 @@ def sample_image_bytes():
 
 
 @pytest.fixture
-def test_client(test_container):
+def test_client(
+    mock_file_storage, mock_variant_generator, mock_processing_orchestrator
+):
     app = FastAPI()
 
-    # Override FastAPI dependencies with test container services
-    app.dependency_overrides[get_file_storage] = lambda: test_container.file_storage
-    app.dependency_overrides[get_variant_generator] = (
-        lambda: test_container.variant_generator
-    )
+    app.dependency_overrides[get_file_storage] = lambda: mock_file_storage
+    app.dependency_overrides[get_variant_generator] = lambda: mock_variant_generator
     app.dependency_overrides[get_processing_orchestrator] = (
-        lambda: test_container.processing_orchestrator
+        lambda: mock_processing_orchestrator
     )
 
     app.include_router(public_router, prefix="/api")
@@ -260,17 +254,19 @@ def test_client(test_container):
 
 
 @pytest.fixture
-def file_storage_service(test_container, mock_settings):
-    file_storage = FileStorageService(settings=mock_settings)
-    test_container.set_file_storage(file_storage)
-    return file_storage
+def file_storage_service(mock_settings):
+    return FileStorageService(settings=mock_settings)
 
 
 @pytest.fixture
-def processing_orchestrator(test_container, mock_file_storage, mock_variant_generator):
-    test_container.set_file_storage(mock_file_storage)
-    test_container.set_variant_generator(mock_variant_generator)
-    return test_container.processing_orchestrator
+def processing_orchestrator(mock_file_storage, mock_variant_generator):
+    from src.image_processing_service.app.core.config import get_settings
+
+    return ProcessingOrchestrator(
+        file_storage=mock_file_storage,
+        variant_generator=mock_variant_generator,
+        settings=get_settings(),
+    )
 
 
 @pytest.fixture(scope="session", autouse=True)

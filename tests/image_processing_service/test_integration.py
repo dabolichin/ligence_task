@@ -12,7 +12,6 @@ from PIL import Image
 from src.image_processing_service.app.api.internal import router as internal_router
 from src.image_processing_service.app.api.public import router as public_router
 from src.image_processing_service.app.core.dependencies import (
-    ServiceContainer,
     get_file_storage,
     get_processing_orchestrator,
     get_variant_generator,
@@ -46,20 +45,40 @@ class TestSimpleServiceIntegration:
         ]:
             Path(dir_path).mkdir(parents=True, exist_ok=True)
 
-        container = ServiceContainer()
-
         file_storage = FileStorageService(settings=mock_settings)
-        container.set_file_storage(file_storage)
 
-        app.dependency_overrides[get_file_storage] = lambda: container.file_storage
-        app.dependency_overrides[get_variant_generator] = (
-            lambda: container.variant_generator
+        from image_modification_algorithms import ModificationEngine
+
+        from src.image_processing_service.app.services.processing_orchestrator import (
+            ProcessingOrchestrator,
         )
+        from src.image_processing_service.app.services.variant_generation import (
+            VariantGenerationService,
+        )
+
+        modification_engine = ModificationEngine()
+        variant_generator = VariantGenerationService(
+            file_storage=file_storage,
+            modification_engine=modification_engine,
+            settings=mock_settings,
+        )
+        processing_orchestrator = ProcessingOrchestrator(
+            file_storage=file_storage,
+            variant_generator=variant_generator,
+            settings=mock_settings,
+        )
+
+        app.dependency_overrides[get_file_storage] = lambda: file_storage
+        app.dependency_overrides[get_variant_generator] = lambda: variant_generator
         app.dependency_overrides[get_processing_orchestrator] = (
-            lambda: container.processing_orchestrator
+            lambda: processing_orchestrator
         )
 
-        return TestClient(app), container
+        return TestClient(app), {
+            "file_storage": file_storage,
+            "variant_generator": variant_generator,
+            "processing_orchestrator": processing_orchestrator,
+        }
 
     @pytest.fixture
     def sample_image_data(self):
@@ -68,19 +87,20 @@ class TestSimpleServiceIntegration:
         image.save(img_bytes, format="JPEG")
         return img_bytes.getvalue()
 
-    def test_service_container_integration(self, test_app):
-        client, container = test_app
+    def test_service_dependency_integration(self, test_app):
+        client, services = test_app
 
-        file_storage = container.file_storage
-        variant_generator = container.variant_generator
-        processing_orchestrator = container.processing_orchestrator
+        file_storage = services["file_storage"]
+        variant_generator = services["variant_generator"]
+        processing_orchestrator = services["processing_orchestrator"]
 
+        # Verify service dependencies are correctly wired
         assert variant_generator.file_storage is file_storage
         assert processing_orchestrator.file_storage is file_storage
         assert processing_orchestrator.variant_generator is variant_generator
 
     def test_api_routing_integration(self, test_app):
-        client, container = test_app
+        client, services = test_app
 
         # Verify routes exist without testing HTTP details (that's for API tests)
         from src.image_processing_service.app.api.internal import (
@@ -98,9 +118,9 @@ class TestSimpleServiceIntegration:
 
     @pytest.mark.asyncio
     async def test_file_storage_integration(self, test_app, sample_image_data):
-        client, container = test_app
+        client, services = test_app
 
-        file_storage = container.file_storage
+        file_storage = services["file_storage"]
 
         image_id = str(uuid.uuid4())
         storage_path, metadata = await file_storage.save_original_image(
@@ -122,7 +142,7 @@ class TestSimpleServiceIntegration:
 
     @pytest.mark.asyncio
     async def test_variant_generation_service_integration(self, test_app):
-        client, container = test_app
+        client, services = test_app
 
         test_image = Image.new("RGB", (10, 10), color="blue")
 
@@ -130,7 +150,7 @@ class TestSimpleServiceIntegration:
         mock_image_record.id = str(uuid.uuid4())
         mock_image_record.format = "JPEG"
 
-        variant_generator = container.variant_generator
+        variant_generator = services["variant_generator"]
 
         with patch(
             "src.image_processing_service.app.services.variant_generation.Modification.create"
@@ -153,19 +173,19 @@ class TestSimpleServiceIntegration:
                 assert "num_modifications" in variant
 
     def test_processing_orchestrator_integration(self, test_app, sample_image_data):
-        client, container = test_app
+        client, services = test_app
 
-        file_storage = container.file_storage
-        orchestrator = container.processing_orchestrator
+        file_storage = services["file_storage"]
+        orchestrator = services["processing_orchestrator"]
 
         assert orchestrator.file_storage is file_storage
         assert orchestrator.variant_generator is not None
         assert orchestrator.variant_generator.file_storage is file_storage
 
     def test_service_error_handling_integration(self, test_app):
-        client, container = test_app
+        client, services = test_app
 
-        file_storage = container.file_storage
+        file_storage = services["file_storage"]
 
         import tempfile
 
@@ -208,22 +228,20 @@ class TestSimpleServiceIntegration:
         await image_record.delete()
 
     def test_dependency_override_integration(self, test_app):
-        client, container = test_app
+        client, services = test_app
 
-        custom_file_storage = MagicMock()
-        container.set_file_storage(custom_file_storage)
+        original_file_storage = services["file_storage"]
+        assert original_file_storage is not None
 
-        assert container.file_storage is custom_file_storage
-
-        variant_generator = container.variant_generator
-        assert variant_generator.file_storage is custom_file_storage
+        variant_generator = services["variant_generator"]
+        assert variant_generator.file_storage is original_file_storage
 
     @pytest.mark.asyncio
     async def test_concurrent_service_operations(self, test_app, sample_image_data):
         import asyncio
 
-        client, container = test_app
-        file_storage = container.file_storage
+        client, services = test_app
+        file_storage = services["file_storage"]
 
         tasks = []
         for i in range(3):

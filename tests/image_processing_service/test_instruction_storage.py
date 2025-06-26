@@ -14,9 +14,7 @@ class TestInstructionStorage:
     )
     async def test_complete_instruction_storage(
         self,
-        test_container,
-        mock_file_storage,
-        mock_modification_engine,
+        variant_service,
         request,
         mock_image_record,
         image_fixture,
@@ -33,11 +31,7 @@ class TestInstructionStorage:
             mock_modification.id = f"mod-{len(stored_instructions)}"
             return mock_modification
 
-        mock_file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
-
-        test_container.set_file_storage(mock_file_storage)
-        test_container.set_modification_engine(mock_modification_engine)
-        variant_service = test_container.variant_generator
+        variant_service.file_storage.save_variant_image.return_value = "/path/to/variant.jpg"
 
         with patch(
             "src.image_processing_service.app.services.variant_generation.Modification.create",
