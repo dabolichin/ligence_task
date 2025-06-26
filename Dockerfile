@@ -9,8 +9,9 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
-# Copy dependency files for better layer caching
+# Copy dependency files and workspace structure for better layer caching
 COPY uv.lock pyproject.toml ./
+COPY packages/ packages/
 
 # Install dependencies in a separate layer for better caching
 # Use cache mount and install dependencies without the project itself
