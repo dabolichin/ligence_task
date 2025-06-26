@@ -163,7 +163,7 @@ class VariantGenerationService:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.post(
                     f"{self.settings.VERIFICATION_SERVICE_URL}/internal/verify",
-                    json=verification_request.model_dump(),
+                    json=verification_request.model_dump(mode="json"),
                 )
 
                 if response.status_code == 200:

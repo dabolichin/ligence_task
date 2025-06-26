@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     # Storage Settings
     TEMP_DIR: str = Field(default="./storage/temp/verification")
     LOGS_DIR: str = Field(default="./storage/logs")
+    ORIGINAL_IMAGES_DIR: str = Field(default="./storage/images/original")
+    MODIFIED_IMAGES_DIR: str = Field(default="./storage/images/modified")
 
     # Inter-service Communication
     IMAGE_PROCESSING_SERVICE_URL: str = Field(default="http://localhost:8001")
@@ -75,6 +77,16 @@ class Settings(BaseSettings):
     def absolute_logs_dir(self) -> str:
         """Get absolute path for logs directory."""
         return str(get_project_root() / self.LOGS_DIR)
+
+    @property
+    def absolute_original_images_dir(self) -> str:
+        """Get absolute path for original images directory."""
+        return str(get_project_root() / self.ORIGINAL_IMAGES_DIR)
+
+    @property
+    def absolute_modified_images_dir(self) -> str:
+        """Get absolute path for modified images directory."""
+        return str(get_project_root() / self.MODIFIED_IMAGES_DIR)
 
 
 @lru_cache()

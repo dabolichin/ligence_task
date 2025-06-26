@@ -123,10 +123,7 @@ class VerificationOrchestrator:
                     self.modification_engine,
                 )
             )
-            is_fully_reversible = (
-                comparison_result.hash_match is True
-                and comparison_result.pixel_match is True
-            )
+            is_fully_reversible = comparison_result.pixel_match is True
 
             return VerificationOutcome(
                 is_reversible=is_fully_reversible,

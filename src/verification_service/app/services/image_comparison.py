@@ -75,20 +75,20 @@ class ImageComparisonService:
         self, original_path: str | Path, reversed_path: str | Path
     ) -> tuple[bool, str, str]:
         try:
-            original_hash = self._get_file_hash(original_path)
-            reversed_hash = self._get_file_hash(reversed_path)
+            original_hash = self._get_pixel_hash(original_path)
+            reversed_hash = self._get_pixel_hash(reversed_path)
 
             hash_match = original_hash == reversed_hash
 
             logger.debug(
-                f"Hash comparison: match={hash_match}, "
+                f"Pixel hash comparison: match={hash_match}, "
                 f"original={original_hash[:16]}..., reversed={reversed_hash[:16]}..."
             )
 
             return hash_match, original_hash, reversed_hash
 
         except Exception as e:
-            logger.error(f"Error in hash comparison: {e}")
+            logger.error(f"Error in pixel hash comparison: {e}")
             raise
 
     def _compare_pixels(
@@ -134,4 +134,23 @@ class ImageComparisonService:
 
         except Exception as e:
             logger.error(f"Error calculating file hash: {e}")
+            raise
+
+    def _get_pixel_hash(self, file_path: str | Path) -> str:
+        try:
+            with Image.open(file_path) as img:
+                # Convert to numpy array to get raw pixel data
+                pixel_array = np.array(img)
+
+                # Convert to bytes and hash
+                pixel_bytes = pixel_array.tobytes()
+                pixel_hash = hashlib.sha256(pixel_bytes).hexdigest()
+
+                logger.debug(
+                    f"Calculated pixel hash for {file_path}: {pixel_hash[:16]}..."
+                )
+                return pixel_hash
+
+        except Exception as e:
+            logger.error(f"Error calculating pixel hash for {file_path}: {e}")
             raise

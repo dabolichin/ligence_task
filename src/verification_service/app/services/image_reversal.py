@@ -1,9 +1,11 @@
 import os
 import tempfile
+from pathlib import Path
 
 from loguru import logger
 from PIL import Image
 
+from ..core.config import get_settings
 from .domain import ComparisonMethod, ComparisonResult
 from .image_comparison import ImageComparisonService
 
@@ -11,6 +13,7 @@ from .image_comparison import ImageComparisonService
 class ImageReversalService:
     def __init__(self, image_comparison_service: ImageComparisonService):
         self.image_comparison_service = image_comparison_service
+        self.settings = get_settings()
 
     async def reverse_image_modifications(
         self, instruction_data, modification_instructions, modification_engine
@@ -76,10 +79,16 @@ class ImageReversalService:
         if original_image_path:
             return original_image_path
 
-        fallback_path = (
-            f"./storage/images/{instruction_data.image_id}/original/"
-            f"{instruction_data.original_filename}"
-        )
+        original_filename = instruction_data.original_filename
+        if "." in original_filename:
+            extension = "." + original_filename.rsplit(".", 1)[1]
+        else:
+            extension = ".jpg"  # Default fallback
+
+        # Construct path using the same pattern as image processing service
+        # Pattern: {image_id}_original{extension}
+        filename = f"{instruction_data.image_id}_original{extension}"
+        fallback_path = str(Path(self.settings.absolute_original_images_dir) / filename)
 
         logger.warning(
             f"Original image path not found in instructions, using fallback: {fallback_path}"
@@ -95,7 +104,7 @@ class ImageReversalService:
             temp_path = temp_file.name
             temp_file.close()
 
-            image.save(temp_path, format="PNG")
+            image.save(temp_path)
             logger.debug(f"Saved temporary image to {temp_path}")
 
             return temp_path
