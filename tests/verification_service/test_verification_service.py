@@ -15,22 +15,21 @@ from main import create_app  # noqa: E402
 
 class TestVerificationServiceLifecycle:
     @pytest.fixture
-    def client(self, test_container):
+    def client(self):
         from unittest.mock import AsyncMock
 
         from fastapi import FastAPI
 
         from src.verification_service.app.api import internal, public
         from src.verification_service.app.core.dependencies import (
-            get_verification_orchestrator_dependency,
+            get_verification_orchestrator,
         )
 
         mock_orchestrator = AsyncMock()
-        test_container.set_verification_orchestrator(mock_orchestrator)
 
         app = FastAPI()
-        app.dependency_overrides[get_verification_orchestrator_dependency] = (
-            lambda: test_container.verification_orchestrator
+        app.dependency_overrides[get_verification_orchestrator] = (
+            lambda: mock_orchestrator
         )
 
         app.include_router(public.router, prefix="/api", tags=["public"])
@@ -141,11 +140,11 @@ class TestServiceIntegration:
         assert response.status_code == 200
 
     def test_dependency_injection_integration(self):
-        from app.core.dependencies import get_service_container
+        from src.verification_service.app.core.dependencies import (
+            get_settings_dependency,
+        )
 
-        container = get_service_container()
-
-        settings = container.settings
+        settings = get_settings_dependency()
         assert settings is not None
 
 

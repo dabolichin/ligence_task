@@ -69,22 +69,21 @@ class TestReceiveVerificationRequestEndpoint:
 
 class TestInternalAPIIntegration:
     @pytest.fixture
-    def client_with_mock_orchestrator(self, test_container):
+    def client_with_mock_orchestrator(self):
         from unittest.mock import AsyncMock
 
         from fastapi import FastAPI
 
         from src.verification_service.app.api import internal, public
         from src.verification_service.app.core.dependencies import (
-            get_verification_orchestrator_dependency,
+            get_verification_orchestrator,
         )
 
         mock_orchestrator = AsyncMock()
-        test_container.set_verification_orchestrator(mock_orchestrator)
 
         app = FastAPI()
-        app.dependency_overrides[get_verification_orchestrator_dependency] = (
-            lambda: test_container.verification_orchestrator
+        app.dependency_overrides[get_verification_orchestrator] = (
+            lambda: mock_orchestrator
         )
 
         app.include_router(public.router, prefix="/api", tags=["public"])

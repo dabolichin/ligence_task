@@ -6,12 +6,10 @@ import httpx
 import pytest
 
 from src.verification_service.app.core.config import Settings
-from src.verification_service.app.core.dependencies import (
-    ServiceContainer,
-)
 from src.verification_service.app.schemas import ModificationInstructionData
 from src.verification_service.app.services.instruction_retrieval import (
     InstructionRetrievalError,
+    InstructionRetrievalService,
 )
 
 
@@ -23,14 +21,8 @@ def mock_settings():
 
 
 @pytest.fixture
-def test_container():
-    return ServiceContainer()
-
-
-@pytest.fixture
-def instruction_retrieval_service(test_container, mock_settings):
-    test_container.set_settings(mock_settings)
-    yield test_container.instruction_retrieval_service
+def instruction_retrieval_service(mock_settings):
+    return InstructionRetrievalService(settings=mock_settings)
 
 
 @pytest.fixture

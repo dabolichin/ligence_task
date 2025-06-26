@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from ..core.dependencies import get_verification_history_service_dependency
+from ..core.dependencies import get_verification_history_service
 from ..schemas.verification import (
     VerificationHistoryResponse,
     VerificationsByModificationResponse,
@@ -16,7 +16,7 @@ router = APIRouter()
 async def get_verification_status(
     verification_id: str,
     verification_history_service: VerificationHistoryService = Depends(
-        get_verification_history_service_dependency
+        get_verification_history_service
     ),
 ) -> VerificationStatusResponse:
     """Get verification status for a specific verification ID."""
@@ -26,7 +26,7 @@ async def get_verification_status(
 @router.get("/verification/statistics")
 async def get_verification_statistics(
     verification_history_service: VerificationHistoryService = Depends(
-        get_verification_history_service_dependency
+        get_verification_history_service
     ),
 ) -> VerificationStatisticsResponse:
     """Get overall verification metrics and statistics."""
@@ -38,7 +38,7 @@ async def get_verification_history(
     limit: int = 50,
     offset: int = 0,
     verification_history_service: VerificationHistoryService = Depends(
-        get_verification_history_service_dependency
+        get_verification_history_service
     ),
 ) -> VerificationHistoryResponse:
     """Get verification audit trail and history."""
@@ -51,7 +51,7 @@ async def get_verification_history(
 async def get_verifications_by_modification(
     modification_id: str,
     verification_history_service: VerificationHistoryService = Depends(
-        get_verification_history_service_dependency
+        get_verification_history_service
     ),
 ) -> VerificationsByModificationResponse:
     """Get all verifications for a specific modification ID."""

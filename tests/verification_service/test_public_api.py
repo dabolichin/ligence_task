@@ -1,5 +1,4 @@
 import uuid
-from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastapi import FastAPI
@@ -7,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from src.verification_service.app.api import internal, public
 from src.verification_service.app.core.dependencies import (
-    get_verification_history_service_dependency,
+    get_verification_history_service,
 )
 from src.verification_service.app.schemas.verification import (
     VerificationHistoryItem,
@@ -15,18 +14,6 @@ from src.verification_service.app.schemas.verification import (
     VerificationStatisticsResponse,
     VerificationStatusResponse,
 )
-from src.verification_service.app.services.verification_history import (
-    VerificationHistoryService,
-)
-
-
-@pytest.fixture
-def mock_verification_history_service():
-    mock = Mock(spec=VerificationHistoryService)
-    mock.get_verification_status = AsyncMock()
-    mock.get_verification_statistics = AsyncMock()
-    mock.get_verification_history = AsyncMock()
-    return mock
 
 
 @pytest.fixture
@@ -34,7 +21,7 @@ def client(mock_verification_history_service):
     app = FastAPI()
 
     # Override FastAPI dependencies with test mocks
-    app.dependency_overrides[get_verification_history_service_dependency] = (
+    app.dependency_overrides[get_verification_history_service] = (
         lambda: mock_verification_history_service
     )
 

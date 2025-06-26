@@ -1,7 +1,6 @@
 import io
 import uuid
 from datetime import datetime
-from unittest.mock import AsyncMock
 
 from PIL import Image
 
@@ -17,8 +16,9 @@ from tests.shared_fixtures import SharedImageFixtures
 
 class TestVerificationWorkflowIntegration:
     async def test_complete_end_to_end_verification_cycle(
-        self, test_client, test_container, tmp_path
+        self, integration_client, tmp_path
     ):
+        client, services = integration_client
         image_id = uuid.uuid4()
         modification_id = uuid.uuid4()
 
@@ -55,18 +55,16 @@ class TestVerificationWorkflowIntegration:
             created_at=datetime.now(),
         )
 
-        mock_retrieval_service = AsyncMock()
-        mock_retrieval_service.get_modification_instructions.return_value = (
-            mock_instruction_data
-        )
-        test_container.set_instruction_retrieval_service(mock_retrieval_service)
+        services[
+            "instruction_retrieval_service"
+        ].get_modification_instructions.return_value = mock_instruction_data
 
         request_payload = {
             "image_id": str(image_id),
             "modification_id": str(modification_id),
         }
 
-        response = test_client.post("/internal/verify", json=request_payload)
+        response = client.post("/internal/verify", json=request_payload)
         assert response.status_code == 200
         assert response.json()["status"] == "accepted"
 
@@ -76,52 +74,51 @@ class TestVerificationWorkflowIntegration:
         assert verification_record is not None
         assert verification_record.status == VerificationStatus.COMPLETED
 
-        status_response = test_client.get(f"/api/verification/{modification_id}/status")
+        status_response = client.get(f"/api/verification/{modification_id}/status")
         assert status_response.status_code == 200
         status_data = status_response.json()
         assert status_data["status"] == "completed"
 
-        stats_response = test_client.get("/api/verification/statistics")
+        stats_response = client.get("/api/verification/statistics")
         assert stats_response.status_code == 200
         stats_data = stats_response.json()
         assert "total_verifications" in stats_data
         assert "success_rate" in stats_data
 
-        history_response = test_client.get("/api/verification/history")
+        history_response = client.get("/api/verification/history")
         assert history_response.status_code == 200
         history_data = history_response.json()
         assert "verifications" in history_data
         assert "total_count" in history_data
 
-        mod_response = test_client.get(
-            f"/api/verification/modifications/{modification_id}"
-        )
+        mod_response = client.get(f"/api/verification/modifications/{modification_id}")
         assert mod_response.status_code == 200
         mod_data = mod_response.json()
         assert mod_data["modification_id"] == str(modification_id)
 
-        health_response = test_client.get("/health")
+        health_response = client.get("/health")
         assert health_response.status_code == 200
         assert health_response.json()["status"] == "healthy"
 
-    async def test_verification_error_handling(self, test_client, test_container):
+    async def test_verification_error_handling(self, integration_client):
+        client, services = integration_client
         invalid_payload = {"invalid": "data"}
-        response = test_client.post("/internal/verify", json=invalid_payload)
+        response = client.post("/internal/verify", json=invalid_payload)
         assert response.status_code == 422
 
         non_existent_id = uuid.uuid4()
-        mock_retrieval_service = AsyncMock()
-        mock_retrieval_service.get_modification_instructions.side_effect = Exception(
+        services[
+            "instruction_retrieval_service"
+        ].get_modification_instructions.side_effect = Exception(
             "Modification not found"
         )
-        test_container.set_instruction_retrieval_service(mock_retrieval_service)
 
         request_payload = {
             "image_id": str(uuid.uuid4()),
             "modification_id": str(non_existent_id),
         }
 
-        response = test_client.post("/internal/verify", json=request_payload)
+        response = client.post("/internal/verify", json=request_payload)
         assert (
             response.status_code == 200
         )  # Request accepted, error handled in background
@@ -133,9 +130,8 @@ class TestVerificationWorkflowIntegration:
         assert verification_record.status == VerificationStatus.COMPLETED
         assert verification_record.is_reversible is False  # Error results in False
 
-    async def test_idempotent_verification_requests(
-        self, test_client, test_container, tmp_path
-    ):
+    async def test_idempotent_verification_requests(self, integration_client, tmp_path):
+        client, services = integration_client
         image_id = uuid.uuid4()
         modification_id = uuid.uuid4()
 
@@ -154,21 +150,19 @@ class TestVerificationWorkflowIntegration:
             created_at=datetime.now(),
         )
 
-        mock_retrieval_service = AsyncMock()
-        mock_retrieval_service.get_modification_instructions.return_value = (
-            mock_instruction_data
-        )
-        test_container.set_instruction_retrieval_service(mock_retrieval_service)
+        services[
+            "instruction_retrieval_service"
+        ].get_modification_instructions.return_value = mock_instruction_data
 
         request_payload = {
             "image_id": str(image_id),
             "modification_id": str(modification_id),
         }
 
-        response1 = test_client.post("/internal/verify", json=request_payload)
+        response1 = client.post("/internal/verify", json=request_payload)
         assert response1.status_code == 200
 
-        response2 = test_client.post("/internal/verify", json=request_payload)
+        response2 = client.post("/internal/verify", json=request_payload)
         assert response2.status_code == 200
 
         verification_records = await VerificationResult.filter(
@@ -176,9 +170,9 @@ class TestVerificationWorkflowIntegration:
         ).all()
         assert len(verification_records) == 1
 
-    async def test_concurrent_verification_handling(
-        self, test_client, test_container, tmp_path
-    ):
+    async def test_concurrent_verification_handling(self, integration_client, tmp_path):
+        client, services = integration_client
+
         def mock_get_instructions(image_id, modification_id):
             image_data, _ = SharedImageFixtures.load_tiny_image()
             variant_file = tmp_path / f"concurrent_variant_{modification_id}.jpg"
@@ -195,11 +189,11 @@ class TestVerificationWorkflowIntegration:
                 created_at=datetime.now(),
             )
 
-        mock_retrieval_service = AsyncMock()
-        mock_retrieval_service.get_modification_instructions.side_effect = (
-            mock_get_instructions
+        services[
+            "instruction_retrieval_service"
+        ].get_modification_instructions.side_effect = (
+            lambda mod_id: mock_get_instructions(image_id, mod_id)
         )
-        test_container.set_instruction_retrieval_service(mock_retrieval_service)
 
         image_id = uuid.uuid4()
         modification_ids = [uuid.uuid4() for _ in range(3)]
@@ -210,7 +204,7 @@ class TestVerificationWorkflowIntegration:
                 "image_id": str(image_id),
                 "modification_id": str(mod_id),
             }
-            response = test_client.post("/internal/verify", json=request_payload)
+            response = client.post("/internal/verify", json=request_payload)
             responses.append((mod_id, response))
 
         for mod_id, response in responses:

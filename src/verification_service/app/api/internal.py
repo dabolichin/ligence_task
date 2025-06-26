@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from loguru import logger
 
-from ..core.dependencies import get_verification_orchestrator_dependency
+from ..core.dependencies import get_verification_orchestrator
 from ..models.verification_result import VerificationResult, VerificationStatus
 from ..schemas import VerificationRequestData as VerificationRequest
 from ..services.verification_orchestrator import VerificationOrchestrator
@@ -14,7 +14,7 @@ async def receive_verification_request(
     request: VerificationRequest,
     background_tasks: BackgroundTasks,
     verification_orchestrator: VerificationOrchestrator = Depends(
-        get_verification_orchestrator_dependency
+        get_verification_orchestrator
     ),
 ) -> dict:
     """Receive verification request from Image Processing Service."""
