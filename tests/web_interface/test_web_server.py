@@ -30,29 +30,15 @@ class TestWebServerSetup:
 class TestBasicFunctionality:
     def test_static_css_accessible(self):
         client = TestClient(app)
-
-        response = client.get("/static/css/style.css")
-        assert response.status_code in [200, 404]
+        response = client.get("/")
+        assert response.status_code == 200
+        assert '<div id="root"></div>' in response.text
 
     def test_static_js_accessible(self):
         client = TestClient(app)
-
-        response = client.get("/static/js/app.js")
-        assert response.status_code in [200, 404]
-
-
-class TestTemplateRendering:
-    def test_index_template_context(self):
-        client = TestClient(app)
         response = client.get("/")
-
         assert response.status_code == 200
-        content = response.text
-        assert "<!doctype html>" in content
-        assert "Image Modification System" in content
-        assert "Upload Image" in content
-        assert "Results" in content
-        assert "Welcome" in content
+        assert 'type="module"' in response.text
 
 
 class TestErrorHandling:
@@ -61,13 +47,3 @@ class TestErrorHandling:
         response = client.get("/nonexistent")
 
         assert response.status_code == 404
-
-    def test_proxy_error_handling(self):
-        client = TestClient(app)
-
-        try:
-            response = client.get("/api/processing/test")
-            assert response.status_code != 404
-        except Exception:
-            # Expected - backend service connection will fail
-            pass

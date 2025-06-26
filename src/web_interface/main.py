@@ -1,9 +1,8 @@
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
 BASE_DIR = Path(__file__).parent
 
@@ -13,14 +12,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+# Serve React build files
+app.mount(
+    "/assets", StaticFiles(directory=str(BASE_DIR / "dist" / "assets")), name="assets"
+)
 
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+async def home():
+    """Serve the React app."""
+    return FileResponse(str(BASE_DIR / "dist" / "index.html"))
 
 
 @app.get("/health")

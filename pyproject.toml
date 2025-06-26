@@ -94,6 +94,12 @@ test-system-fast = "uv run pytest tests/system/ -v --tb=short -m 'not slow'"
 test-system-smoke = "uv run pytest tests/system/ -v --tb=short -k 'tiny_image or small_image'"
 test-all = "uv run pytest -v"
 
+# Web interface tasks
+web-install = { shell = "cd src/web_interface && npm install" }
+web-build = { shell = "cd src/web_interface && npm run build" }
+web-dev = { shell = "cd src/web_interface && npm run dev" }
+web-clean = { shell = "cd src/web_interface && rm -rf dist node_modules" }
+
 # Tool Configuration
 [tool.pytest.ini_options]
 pythonpath = ["."]

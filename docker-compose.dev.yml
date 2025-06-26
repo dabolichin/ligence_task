@@ -104,14 +104,11 @@ services:
         - action: sync
           path: ./tests
           target: /app/tests
-        # Sync static files for web interface
-        - action: sync
-          path: ./src/web_interface/static
-          target: /app/src/web_interface/static
-        # Sync templates
-        - action: sync
-          path: ./src/web_interface/templates
-          target: /app/src/web_interface/templates
+        # Rebuild React app on changes
+        - action: rebuild
+          path: ./src/web_interface/src
+        - action: rebuild
+          path: ./src/web_interface/package.json
         # Rebuild on dependency changes
         - action: rebuild
           path: ./pyproject.toml

@@ -1,8 +1,11 @@
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
+# Install Node.js and npm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -20,6 +23,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-install-package reversible-image-modification-system
 
 COPY . .
+
+# Build React app
+RUN cd src/web_interface && npm ci && npm run build
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     UV_COMPILE_BYTECODE=1 \

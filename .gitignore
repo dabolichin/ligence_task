@@ -43,3 +43,6 @@ storage/logs/*
 
 #Coverage
 .coverage
+
+# React
+node_modules/
