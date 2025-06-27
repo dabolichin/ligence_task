@@ -12,7 +12,7 @@ The Reversible Image Alteration System is a distributed application that applies
 - System will handle images up to 100 Mb in size
 - The system will run on a single server environment initially
 - Network connectivity between services is reliable within the deployment environment
-- Users have modern web browsers supporting HTMX and Alpine.js
+- Users have modern web browsers supporting React and ES6 modules
 - Pixel modification algorithms maintain mathematical reversibility
 - File system has sufficient storage capacity for original and modified images
 - SQLite database is adequate for the expected concurrent load
@@ -22,7 +22,7 @@ The Reversible Image Alteration System is a distributed application that applies
 - Python 3.12+ runtime environment
 - SQLite database engine
 - File system with read/write permissions
-- Web server capable of serving static files
+- Web server capable of serving static files and React build assets
 - Modern web browser for frontend interface
 - uv package manager for dependency resolution
 - Docker & Docker Compose (optional, for containerized deployment)
@@ -78,7 +78,7 @@ The Reversible Image Alteration System is a distributed application that applies
 
 #### 4.4 Web Interface
 
-- Provide file upload interface for image processing via Image Processing Service API
+- React-based single-page application with component-based architecture
 - Display processing progress and status updates by polling Image Processing Service
 - Show verification results and modification statistics from Verification Service API
 - Enable viewing of original and modified image variants served by Image Processing Service
@@ -122,9 +122,10 @@ The Reversible Image Alteration System is a distributed application that applies
 
 #### 6.2 Frontend Technology Stack
 
-- HTMX for dynamic content updates
-- Alpine.js for client-side interactivity
-- DaisyUI for component styling and layout
+- React 18 for component-based user interface
+- Vite for build tooling and development server
+- Tailwind CSS for utility-first styling
+- ES6 modules for modern JavaScript architecture
 
 #### 6.3 Development Tools
 
