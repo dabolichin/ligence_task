@@ -1,15 +1,42 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 
-const ImagesList = ({ processingId, onImageSelect, selectedImage }) => {
+const ImagesList = ({ processingId, onImageSelect, selectedImage, processingStatus }) => {
   const [images, setImages] = useState([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    // Load all images on component mount
+    loadAllImages()
+  }, [])
 
   useEffect(() => {
     if (processingId) {
       loadImages()
     }
-  }, [processingId])
+  }, [processingId, processingStatus])
+
+  const loadAllImages = async () => {
+    setLoading(true)
+    try {
+      const response = await axios.get('http://localhost:8001/api/images')
+      const data = response.data
+      
+      const imageList = data.images.map(img => ({
+        id: img.image_id,
+        name: `${img.original_filename} (${img.image_id.toString().substring(0, 8)})`,
+        status: img.status,
+        variants: img.variants_count,
+        created_at: img.created_at
+      }))
+      
+      setImages(imageList)
+    } catch (error) {
+      console.error('Error loading all images:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const loadImages = async () => {
     if (!processingId) return
@@ -19,18 +46,29 @@ const ImagesList = ({ processingId, onImageSelect, selectedImage }) => {
       const response = await axios.get(`http://localhost:8001/api/processing/${processingId}/status`)
       const data = response.data
       
-      if (data.status === 'completed') {
+      if (data.status === 'completed' || data.status === 'processing') {
         // Create image object from processing data
         const imageData = {
           id: processingId,
-          name: `Image (${data.processing_id.substring(0, 8)})`,
+          name: `Image (${processingId.toString().substring(0, 8)})`,
           status: data.status,
           variants: data.variants_completed || 0
         }
-        setImages([imageData])
         
-        // Auto-select this image
-        if (!selectedImage) {
+        // Update existing images or add new one
+        setImages(prevImages => {
+          const existingIndex = prevImages.findIndex(img => img.id === processingId)
+          if (existingIndex >= 0) {
+            const updated = [...prevImages]
+            updated[existingIndex] = imageData
+            return updated
+          } else {
+            return [imageData, ...prevImages]
+          }
+        })
+        
+        // Auto-select this image when completed
+        if (data.status === 'completed' && !selectedImage) {
           onImageSelect(imageData)
         }
       }
@@ -69,8 +107,20 @@ const ImagesList = ({ processingId, onImageSelect, selectedImage }) => {
         >
           <div className="font-medium text-gray-900">{image.name}</div>
           <div className="text-sm text-gray-500 mt-1">
-            {image.variants} variants
+            {image.status === 'processing' ? (
+              <span className="text-blue-600">Processing... ({image.variants}/100)</span>
+            ) : (
+              <span>{image.variants} variants complete</span>
+            )}
           </div>
+          {image.status === 'processing' && (
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${(image.variants / 100) * 100}%` }}
+              ></div>
+            </div>
+          )}
         </div>
       ))}
       

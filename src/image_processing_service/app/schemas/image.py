@@ -95,6 +95,25 @@ class ModificationInstructions(BaseModel):
     created_at: datetime = Field(..., description="When modification was created")
 
 
+class ImageSummary(BaseModel):
+    """Summary information about an image"""
+    
+    image_id: UUID = Field(..., description="Image identifier")
+    original_filename: str = Field(..., description="Original filename")
+    file_size: int = Field(..., description="File size in bytes")
+    format: str = Field(..., description="Image format")
+    variants_count: int = Field(..., description="Number of variants generated")
+    created_at: datetime = Field(..., description="When image was uploaded")
+    status: str = Field(..., description="Processing status")
+
+
+class ImageListResponse(BaseModel):
+    """Response model for listing images"""
+    
+    images: list[ImageSummary] = Field(..., description="List of images")
+    total_count: int = Field(..., description="Total number of images")
+
+
 class VerificationRequest(BaseModel):
     """Schema for verification request sent to Verification Service."""
 

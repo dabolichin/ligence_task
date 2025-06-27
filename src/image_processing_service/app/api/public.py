@@ -8,6 +8,8 @@ from ..core.dependencies import get_file_storage, get_processing_orchestrator
 from ..models import Image as ImageModel
 from ..models import Modification
 from ..schemas import (
+    ImageListResponse,
+    ImageSummary,
     ImageUploadResponse,
     ModificationDetails,
     ProcessingStatus,
@@ -319,6 +321,67 @@ async def serve_variant_image(
                 detail=f"Variant {variant_id} not found for image {image_id}",
             )
         logger.error(f"Error serving variant {variant_id} for image {image_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/images", response_model=ImageListResponse)
+async def list_images(
+    limit: int = 50,
+    offset: int = 0,
+    orchestrator: ProcessingOrchestrator = Depends(get_processing_orchestrator),
+):
+    """
+    List all processed images with their status.
+
+    Args:
+        limit: Maximum number of images to return (default 50)
+        offset: Number of images to skip (default 0)
+
+    Returns:
+        ImageListResponse with list of images and metadata
+    """
+    logger.info(f"Listing images with limit={limit}, offset={offset}")
+
+    try:
+        images = (
+            await ImageModel.all()
+            .prefetch_related("modifications")
+            .order_by("-created_at")
+            .offset(offset)
+            .limit(limit)
+        )
+        total_count = await ImageModel.all().count()
+
+        image_summaries = []
+        for image in images:
+            variants_count = len(image.modifications)
+
+            if variants_count == 0:
+                status = "processing"
+            elif variants_count < 100:
+                status = "processing"
+            else:
+                status = "completed"
+
+            image_summaries.append(
+                ImageSummary(
+                    image_id=image.id,
+                    original_filename=image.original_filename,
+                    file_size=image.file_size,
+                    format=image.format or "unknown",
+                    variants_count=variants_count,
+                    created_at=image.created_at,
+                    status=status,
+                )
+            )
+
+        return ImageListResponse(
+            images=image_summaries,
+            total_count=total_count,
+        )
+
+    except Exception as e:
+        logger.error(f"Error listing images: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
