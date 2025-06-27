@@ -46,3 +46,6 @@ storage/logs/*
 
 # React
 node_modules/
+
+# MAC
+.DS_Store
